@@ -1,27 +1,36 @@
 ﻿using UnityEngine;
+using System.Collections;
 
 public class CaveGameManager : MonoBehaviour
 {
     [Header("洞窟ループ設定")]
-    public Transform[] caveSegments;
-    public float segmentLength = 50f;
-    public float moveSpeed = 5f;
+    public Transform[] caveSegments;     // 通常洞窟セグメント
+    public float segmentLength = 50f;    // 洞窟1つの長さ
+    public float moveSpeed = 5f;         // 洞窟の移動速度
 
-    [Header("トロッコ設定")]
-    public Transform tram;
+    [Header("レーン設定")]
+    public Transform rail1Point;         // 左レーン位置
+    public Transform rail2Point;         // 右レーン位置
+    public float laneSwitchSpeed = 5f;   // 洞窟の横移動速度
 
-    [Header("T字洞窟設定")]
-    public GameObject tCavePrefab;
-    public float spawnDistance = 50f;
+    [Header("L/R洞窟プレハブ")]
+    public GameObject caveSegmentL;      // 左分岐プレハブ
+    public GameObject caveSegmentR;      // 右分岐プレハブ
 
-    private GameObject currentTCave;
-    private TCaveController currentTCaveController;
-    private bool waitingForInput = true;
-    private Transform hiddenSegment;
-    private float loopStartZ = 0f;  // ループ再開時の基準Z
+    [Header("デバッグ設定")]
+    public bool isRightAnswer = true;    // 右が正解ならtrue、左が正解ならfalse
+
+    private Vector3 targetLaneOffset;    // 現在目指すレーン位置（X方向）
+    private bool isRightLane = false;    // 現在右レーンにいるか
+    private bool canInput = true;        // 入力可能フラグ
+    private bool specialCaveSpawned = false; // L/R洞窟を出したかどうか
+    private GameObject activeSpecialCave;    // 出現中のL/R洞窟参照
 
     void Start()
     {
+        targetLaneOffset = Vector3.zero;
+
+        // 洞窟の初期配置
         for (int i = 0; i < caveSegments.Length; i++)
         {
             caveSegments[i].position = new Vector3(0, 0, i * segmentLength);
@@ -30,128 +39,159 @@ public class CaveGameManager : MonoBehaviour
 
     void Update()
     {
-        // 通常洞窟ループの実行条件
-        bool allowLoop = currentTCave == null ||
-                         (currentTCaveController != null && !currentTCaveController.IsTurning());
+        MoveCaveSegments();
 
-        if (allowLoop)
-        {
-            MoveCaveSegments();
-        }
-
-        // 入力受付
-        if (waitingForInput)
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-                SpawnTCave(true);
-            else if (Input.GetKeyDown(KeyCode.S))
-                SpawnTCave(false);
-        }
-
-        // T字洞窟回転終了判定
-        if (currentTCaveController != null && !currentTCaveController.IsTurning() && !waitingForInput)
-        {
-            waitingForInput = true;
-
-            // 回転終了時に基準Zを更新
-            loopStartZ = GetMaxSegmentZ();
-
-            currentTCave = null;
-            currentTCaveController = null;
-
-            if (hiddenSegment != null)
-            {
-                hiddenSegment.gameObject.SetActive(true);
-                hiddenSegment = null;
-            }
-
-            Debug.Log("[Update] T字洞窟終了後の maxZ: " + loopStartZ);
-        }
+        if (canInput && !specialCaveSpawned)
+            HandleLaneInput();
     }
 
+    // ============================
+    // 🚃 洞窟ループ移動処理
+    // ============================
     void MoveCaveSegments()
     {
-        // T字洞窟回転中は完全に停止
-        if (currentTCave != null && currentTCaveController != null && currentTCaveController.IsTurning())
-        {
-            // T字洞窟自身は回転だけさせる（必要なら回転中前進もここで処理）
-            currentTCave.transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.Self);
-            return;
-        }
-
-        // 通常洞窟移動
         foreach (Transform segment in caveSegments)
         {
+            // 奥へ移動
             segment.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
 
+            // X方向のレーン移動
+            Vector3 pos = segment.position;
+            pos.x = Mathf.Lerp(pos.x, targetLaneOffset.x, Time.deltaTime * laneSwitchSpeed);
+            segment.position = pos;
+
+            // Z が一定以下でループ
             if (segment.position.z < -segmentLength)
             {
-                // 回転が終わった後に loopStartZ を参照して再配置
-                float maxZ = Mathf.Max(GetMaxSegmentZ(), loopStartZ);
-                segment.position = new Vector3(0, 0, maxZ + segmentLength);
+                Transform targetHead = GetFarthestHeadPoint();
+
+                // 子にする
+                segment.SetParent(targetHead);
+
+                // ローカルを 0 に
+                segment.localPosition = Vector3.zero;
+                segment.localRotation = Quaternion.identity;
+
+                // 1フレーム後に unparent
+                StartCoroutine(DetachNextFrame(segment));
+            }
+
+        }
+
+        // 特殊洞窟 L/R も流す
+        if (activeSpecialCave != null)
+        {
+            activeSpecialCave.transform.Translate(Vector3.back * moveSpeed * Time.deltaTime, Space.World);
+
+            if (activeSpecialCave.transform.position.z < -segmentLength)
+            {
+                Destroy(activeSpecialCave);
+                activeSpecialCave = null;
+
+                canInput = true;
+                specialCaveSpawned = false;
+
+                Debug.Log("[Cave] L/R洞窟が通過 → 入力再開");
             }
         }
     }
 
-    void SpawnTCave(bool isRight)
+    // ============================
+    // 🎮 入力処理
+    // ============================
+    void HandleLaneInput()
     {
-        if (currentTCave != null) return;
-
-        Transform frontSegment = GetFrontSegment();
-        Transform tPoint = frontSegment.Find("TPoint");
-        if (tPoint == null)
+        if (Input.GetKeyDown(KeyCode.A))
         {
-            Debug.LogWarning("TPoint not found in " + frontSegment.name);
-            return;
+            Debug.Log("[Input] 左レーン選択");
+            canInput = false;
+            isRightLane = false;
+            targetLaneOffset = new Vector3(rail1Point.localPosition.x, 0, 0);
+
+            SpawnSpecialCave(isRightAnswer ? caveSegmentL : caveSegmentR, "Aキー押下");
         }
+        else if (Input.GetKeyDown(KeyCode.S))
+        {
+            Debug.Log("[Input] 右レーン選択");
+            canInput = false;
+            isRightLane = true;
+            targetLaneOffset = new Vector3(rail2Point.localPosition.x, 0, 0);
 
-        currentTCave = Instantiate(tCavePrefab, tPoint.position, tPoint.rotation);
-        currentTCave.transform.SetParent(tPoint);
-
-        Rigidbody rb = currentTCave.GetComponent<Rigidbody>();
-        if (rb != null) rb.isKinematic = true;
-
-        currentTCaveController = currentTCave.GetComponent<TCaveController>();
-        if (currentTCaveController != null)
-            currentTCaveController.SetTurnDirection(isRight);
-
-        hiddenSegment = frontSegment;
-        hiddenSegment.gameObject.SetActive(false);
-
-        waitingForInput = false;
-
-        Debug.Log($"[SpawnTCave] {currentTCave.name} を {frontSegment.name}/TPoint に親子付けしました");
+            SpawnSpecialCave(isRightAnswer ? caveSegmentR : caveSegmentL, "Sキー押下");
+        }
     }
 
-    Transform GetFrontSegment()
+    // ============================
+    // 🧩 L/R 洞窟生成処理
+    // ============================
+    void SpawnSpecialCave(GameObject prefab, string inputSource)
     {
-        Transform front = caveSegments[0];
-        float maxZ = front.position.z;
+        if (specialCaveSpawned)
+            return;
+
+        Transform targetHead = GetFarthestHeadPoint();
+
+        // --- ① まず headPoint の子として生成（ズレ防止の基本形）---
+        activeSpecialCave = Instantiate(prefab, targetHead);
+
+        // ② localPosition をゼロ化（Z/Y のズレ完全防止）
+        activeSpecialCave.transform.localPosition = Vector3.zero;
+        activeSpecialCave.transform.localRotation = Quaternion.identity;
+
+        // ③ 1フレーム後に unparent（※ここが変更点）
+        StartCoroutine(DetachSpecialNextFrame(activeSpecialCave));
+
+        // ④ ここが重要：レーン位置（X）を現在の targetLaneOffset に合わせる！
+        Vector3 pos = activeSpecialCave.transform.position;
+        pos.x = targetLaneOffset.x;  // ← レーン位置を洞窟へ反映
+        activeSpecialCave.transform.position = pos;
+
+        specialCaveSpawned = true;
+
+        Debug.Log($"[Cave] {inputSource} → {prefab.name} 生成（正解: {(isRightAnswer ? "右" : "左")}）");
+    }
+
+
+
+    // ============================
+    // 🔍 一番奥にある洞窟の headPoint を取得
+    // ============================
+    Transform GetFarthestHeadPoint()
+    {
+        Transform farthest = null;
+        float maxZ = float.MinValue;
 
         foreach (Transform seg in caveSegments)
         {
-            if (seg.position.z > maxZ)
+            Transform head = seg.Find("headPoint");
+            if (head != null && head.position.z > maxZ)
             {
-                front = seg;
-                maxZ = seg.position.z;
+                maxZ = head.position.z;
+                farthest = head;
             }
         }
-        return front;
+
+        return farthest;
     }
 
-    float GetMaxSegmentZ()
+    IEnumerator DetachNextFrame(Transform segment)
     {
-        float maxZ = float.MinValue;
+        // 1フレーム待つ
+        yield return null;
 
-        foreach (Transform segment in caveSegments)
-        {
-            if (segment.position.z > maxZ)
-                maxZ = segment.position.z;
-        }
-
-        if (currentTCave != null && currentTCave.transform.position.z > maxZ)
-            maxZ = currentTCave.transform.position.z;
-
-        return maxZ;
+        // 親を解除
+        segment.SetParent(null);
     }
+
+    IEnumerator DetachSpecialNextFrame(GameObject obj)
+    {
+        // 1フレーム待つ
+        yield return null;
+
+        // 親を外す
+        if (obj != null)
+            obj.transform.SetParent(null);
+    }
+
+
 }
