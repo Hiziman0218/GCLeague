@@ -20,4 +20,12 @@ namespace Game.Enum
         Normal,
         Anabuki,
     }
+
+    //UIの種類
+    public enum UIType
+    {
+        HUD,     //ゲーム中にずっと表示されるUI
+        Timer,   //回答中の制限時間を表示するUI
+        StartUI, //ゲーム開始時にゲームの設定を表示するUI
+    }
 }

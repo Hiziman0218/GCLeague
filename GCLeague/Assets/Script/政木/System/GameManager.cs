@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     private bool m_isClearQuiz = false;  //問題を正解したか
 
     [SerializeField] private QuizManager m_quizManager; //クイズマネージャー(シーン上から設定)
+    [SerializeField] private UIManager m_UIManager;     //UIマネージャー(シーン上から設定)
 
     private void Awake()
     {
@@ -86,10 +87,21 @@ public class GameManager : MonoBehaviour
         m_state = State;
     }
 
+    /// <summary>
+    /// 現在のゲームの状態を取得
+    /// </summary>
+    /// <returns></returns>
+    public GameState GetState()
+    {
+        return m_state;
+    }
+
     //各状態の更新処理
     private void UpdateGameStart()
     {
-        //UIクラスにGameSettingを渡し、内容を表示してもらう
+        //UIクラスにGameSettingを渡し、開始前の内容を表示してもらう
+        m_UIManager.SetManagers(this, m_gameSetting);
+        m_UIManager.ShowStartUI();
 
         //経過時間を加算
         m_elapsedTime += Time.deltaTime;
@@ -98,6 +110,7 @@ public class GameManager : MonoBehaviour
         if (m_elapsedTime >= m_startTime)
         {
             ChangeState(GameState.Question);
+            m_UIManager.HideStartUI();
         }
     }
 
@@ -113,8 +126,9 @@ public class GameManager : MonoBehaviour
         if (m_currentQuiz != null)
         {
             //UIクラスに取得したクイズを設定
+            //ここに処理を追加
             //クイズの表示が終わったら、回答中へ移行
-            if (true /*UIクラスから「表示が終わったか」を取得*/)
+            if (true /*UIクラスから「表示が終わったか」を取得する処理を追加*/)
             {
                 ChangeState(GameState.Thinking);
             }
@@ -123,7 +137,8 @@ public class GameManager : MonoBehaviour
 
     private void UpdateThinking()
     {
-        //UIに残り時間(m_thinkingTime - m_elapsedTime)を表示させる
+        //UIに残り時間を表示させる
+        m_UIManager.ShowTimer();
 
         //経過時間を加算
         m_elapsedTime += Time.deltaTime;
@@ -137,24 +152,41 @@ public class GameManager : MonoBehaviour
 
     private void UpdateJudging()
     {
-        //一旦そのまま正解状態か不正解状態への移行としたが、待機を挟むなら
-        //この問題をクリアしたかをm_isClearQuizに保存しStandbyへ移行
+        //タイマーを非表示に設定
+        m_UIManager.HideTimer();
 
         //プレイヤーの回答を取得し、正誤によって分岐
-        //IsCorrectの引数はプレイヤーまたはトロッコから取得
-        if (m_currentQuiz.IsCorrect(1))
+        //IsCorrectの引数はプレイヤーまたはトロッコから取得(現在はデバッグ用に1)
+        if (m_currentQuiz.IsCorrect(1/*ここに処理を追加*/))
         {
-            ChangeState(GameState.CorrectAnswer);
+            m_isClearQuiz = true;
+            ChangeState(GameState.Standby);
         }
         else
         {
-            ChangeState(GameState.IncorrectAnswer);
+            m_isClearQuiz = false;
+            ChangeState(GameState.Standby);
         }
     }
 
     private void UpdateStandby()
     {
+        //ここで正誤によってUIを切り替えて表示
+        //ここに処理を追加
 
+        //UIとフィールドの演出が終了したら、m_isClearQuizの値に応じて状態を変更
+        //一旦trueとする
+        if (true/*ここに処理を追加*/)
+        {
+            if (m_isClearQuiz)
+            {
+                ChangeState(GameState.CorrectAnswer);
+            }
+            else
+            {
+                ChangeState(GameState.IncorrectAnswer);
+            }
+        }
     }
 
     private void UpdateCorrectAnswer()
@@ -186,7 +218,6 @@ public class GameManager : MonoBehaviour
                     m_currentDifficulty++;
                 }
             }
-
             ChangeState(GameState.Question);
         }
     }
@@ -212,11 +243,59 @@ public class GameManager : MonoBehaviour
     private void UpdateGameClear()
     {
         //UIにゲームクリアの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
+        //ここに処理を追加
     }
 
     private void UpdateGameOver()
     {
         //UIにゲームオーバーの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
+        //ここに処理を追加
+    }
+
+    /// <summary>
+    /// 現在の難易度を取得
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentDifficulty()
+    {
+        return m_currentDifficulty;
+    }
+    
+    /// <summary>
+    /// 現在の問題数を取得(クリアした問題数+1で現在の問題数)
+    /// </summary>
+    /// <returns></returns>
+    public int GetCurrentQuizNumber()
+    {
+        return m_clearCount + 1;
+    }
+
+    /// <summary>
+    /// 残機を取得
+    /// </summary>
+    /// <returns></returns>
+    public int GetLife()
+    {
+        return m_life;
+    }
+
+    /// <summary>
+    /// 回答のタイムリミットを取得(回答中状態以外なら0を返す)
+    /// </summary>
+    /// <returns></returns>
+    public float GetLimit()
+    {
+        if(m_state == GameState.Thinking) return m_thinkingTime - m_elapsedTime;
+        else return 0;
+    }
+
+    /// <summary>
+    /// ゲームの設定を取得
+    /// </summary>
+    /// <returns></returns>
+    public GameSetting GetSetting()
+    {
+        return m_gameSetting;
     }
 
     /// <summary>
