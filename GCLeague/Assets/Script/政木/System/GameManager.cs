@@ -25,11 +25,13 @@ public class GameManager : MonoBehaviour
         m_state = GameState.GameStart;
 
         //デバッグ用にマジックナンバーを使用、最終的に削除
-        m_gameSetting = new GameSetting(QuizType.Normal, 1, 10, 5, 3, 60f);
+        m_gameSetting = new GameSetting(QuizType.Normal, 1, 10, 5, 3, 90f);
     }
 
     private void Start()
     {
+        //UIマネージャーにゲーム設定を設定
+        m_UIManager.SetManagers(this, m_gameSetting);
         //出題するクイズの難易度を設定
         m_currentDifficulty = m_gameSetting.GetDifficulty();
         //今回のゲームにおける問題数を設定
@@ -99,18 +101,21 @@ public class GameManager : MonoBehaviour
     //各状態の更新処理
     private void UpdateGameStart()
     {
-        //UIクラスにGameSettingを渡し、開始前の内容を表示してもらう
-        m_UIManager.SetManagers(this, m_gameSetting);
-        m_UIManager.ShowStartUI();
+        //開始前の内容を表示
+        if (!m_UIManager.GetIsShowClear(UIType.StartUI)) m_UIManager.ShowStartUI();
 
         //経過時間を加算
         m_elapsedTime += Time.deltaTime;
 
-        //経過時間が、GameStart時に待機する時間を超えていたら、クイズの出題へ移行
+        //経過時間が、GameStart時に待機する時間を超えていたら、StartUIを非表示
         if (m_elapsedTime >= m_startTime)
         {
-            ChangeState(GameState.Question);
-            m_UIManager.HideStartUI();
+            if(!m_UIManager.GetIsHideClear(UIType.StartUI)) m_UIManager.HideStartUI();
+            //非表示処理が終わっていたらクイズの出題へ移行
+            if (m_UIManager.GetIsHideClear(UIType.StartUI))
+            {
+                ChangeState(GameState.Question);
+            }
         }
     }
 

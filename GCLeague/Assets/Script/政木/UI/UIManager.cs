@@ -91,6 +91,8 @@ public class UIManager : MonoBehaviour
     public void HideAll()
     {
         m_hud.Hide();
+        m_timer.Hide();
+        m_startUI.Hide();
     }
 
     /// <summary>

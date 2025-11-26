@@ -1,22 +1,22 @@
 using UnityEngine;
-using TMPro;
+using UnityEngine.UI;
 using Game.Enum;
 
 public class HUD : UIBase
 {
     [Header("UI")]
     [Tooltip("クイズ形式")]
-    [SerializeField] TextMeshProUGUI m_quizType;
+    [SerializeField] Text m_quizType;
     [Tooltip("現在の難易度")]
-    [SerializeField] TextMeshProUGUI m_currentDifficulty;
+    [SerializeField] Text m_currentDifficulty;
     [Tooltip("総問題数")]
-    [SerializeField] TextMeshProUGUI m_quizNumber;
+    [SerializeField] Text m_quizNumber;
     [Tooltip("何問目か")]
-    [SerializeField] TextMeshProUGUI m_currentQuizNumber;
+    [SerializeField] Text m_currentQuizNumber;
     [Tooltip("プレイヤーの人数")]
-    [SerializeField] TextMeshProUGUI m_playerNumber;
+    [SerializeField] Text m_playerNumber;
     [Tooltip("残機")]
-    [SerializeField] TextMeshProUGUI m_life;
+    [SerializeField] Text m_life;
 
     private GameManager m_gameManager; //ゲームマネージャー保持用
     private GameSetting m_gameSetting; //ゲームの設定保持用
@@ -52,10 +52,10 @@ public class HUD : UIBase
         switch (m_gameSetting.GetQuizType())
         {
             case QuizType.Normal:
-                m_quizType.text = "通常モード";
+                m_quizType.text = "【通常クイズ】";
                 break;
             case QuizType.Anabuki:
-                m_quizType.text = "穴吹モード";
+                m_quizType.text = "【穴吹クイズ】";
                 break;
         }
         //総問題数

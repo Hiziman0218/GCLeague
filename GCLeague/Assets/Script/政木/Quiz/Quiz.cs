@@ -14,8 +14,6 @@ public class Quiz
     [Tooltip("“ïˆÕ“x(1‚©‚ç5)")]
     [Range(1, 5)]
     [SerializeField] private int m_difficulty;
-    [Tooltip("–â‘è‰æ‘œ")]
-    [SerializeField] private Sprite m_questionImage;
     [Tooltip("‰ñ“š1‰æ‘œ")]
     [SerializeField] private Sprite m_choice1Image;
     [Tooltip("‰ñ“š2‰æ‘œ")]
@@ -26,7 +24,6 @@ public class Quiz
     public string Choice2 => m_choice2;
     public int CorrectIndex => m_correctIndex;
     public int Difficulty => m_difficulty;
-    public Sprite QuestionImage => m_questionImage;
     public Sprite Choice1Image => m_choice1Image;
     public Sprite Choice2Image => m_choice2Image;
 }
