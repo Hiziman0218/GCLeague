@@ -17,7 +17,10 @@ public class Timer : UIBase
     private void UpdateTimer()
     {
         //¬”“_ˆÈ‰º‚ğØ‚èÌ‚Ä‚½”’l‚ğİ’è
-        m_timer.text = $"{Mathf.Floor(m_time/* - 1f*/)}";
+        float currentTime = Mathf.Floor(m_time);
+        //0ˆÈ‰º‚Ì”’l‚È‚ç0‚É‹­§
+        if (currentTime <= 0) currentTime = 0; 
+        m_timer.text = $"{currentTime}";
     }
 
     public void SetTime(float time)

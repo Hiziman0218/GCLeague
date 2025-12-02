@@ -1,28 +1,24 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using Game.Enum;
 
-public class StartUI : UIBase
+public class QuizUI : UIBase
 {
     [Header("UI")]
-    [Tooltip("クイズ形式")]
-    [SerializeField] Text m_quizType;
-    [Tooltip("最初の難易度")]
-    [SerializeField] Text m_difficulty;
-    [Tooltip("クイズの総問題数")]
-    [SerializeField] Text m_quizNumber;
-    [Tooltip("プレイヤーの人数")]
-    [SerializeField] Text m_playerNumber;
-    [Tooltip("残機")]
-    [SerializeField] Text m_life;
-    [Tooltip("回答にかけられる時間")]
-    [SerializeField] Text m_timer;
+    [Tooltip("問題文")]
+    [SerializeField] private Text m_question;
+    [Tooltip("回答文1")]
+    [SerializeField] private Text m_answer1;
+    [Tooltip("回答文2")]
+    [SerializeField] private Text m_answer2;
+    [Tooltip("回答画像1")]
+    [SerializeField] private Image m_choise1;
+    [Tooltip("回答画像2")]
+    [SerializeField] private Image m_choise2;
 
     [Header("アニメーション設定")]
     [SerializeField] private float m_expansionDuration = 0.3f; //拡大アニメーション時間
 
-    private GameSetting m_gameSetting; //ゲームの設定保持用
     private Coroutine m_animCoroutine; //コルーチン管理用
 
     private void Awake()
@@ -32,41 +28,21 @@ public class StartUI : UIBase
         HideEvent += ReductionOut;
     }
 
-    private void Update()
-    {
-        UpdateStartUI();
-    }
-
     /// <summary>
-    /// StartUI更新
+    /// クイズの内容を設定
     /// </summary>
-
-    public void UpdateStartUI()
+    /// <param name="question">問題文</param>
+    /// <param name="answer1">回答文1</param>
+    /// <param name="answer2">回答文2</param>
+    /// <param name="choise1">回答画像1</param>
+    /// <param name="choise2">回答画像2</param>
+    public void SetQuiz(string question, string answer1, string answer2, Sprite choise1, Sprite choise2)
     {
-        switch (m_gameSetting.GetQuizType())
-        {
-            case QuizType.Normal:
-                m_quizType.text = "【通常クイズ】";
-                break;
-            case QuizType.Anabuki:
-                m_quizType.text = "【穴吹クイズ】";
-                break;
-        }
-
-        m_difficulty.text = $"{m_gameSetting.GetDifficulty()}";
-        m_quizNumber.text = $"全{m_gameSetting.GetQuizNumber()}問";
-        m_playerNumber.text = $"{m_gameSetting.GetPlayerNumber()}人";
-        m_life.text = $"{m_gameSetting.GetLife()}";
-        m_timer.text = $"{m_gameSetting.GetTimer()}秒";
-    }
-
-    /// <summary>
-    /// ゲームの設定を設定
-    /// </summary>
-    /// <param name="gameSetting"></param>
-    public void SetGameSetting(GameSetting gameSetting)
-    {
-        m_gameSetting = gameSetting;
+        if (question != null) m_question.text = question;
+        if (answer1 != null) m_answer1.text = answer1;
+        if (answer2 != null) m_answer2.text = answer2;
+        if (choise1 != null) m_choise1.sprite = choise1;
+        if (choise2 != null) m_choise2.sprite = choise2;
     }
 
     /// <summary>
@@ -77,7 +53,7 @@ public class StartUI : UIBase
         //親オブジェクトが設定されていなければ、以降の処理を行わない
         if (root == null) return;
 
-        //すでにアニメーションが動いていたら止める
+        // すでにアニメーションが動いていたら止める
         if (m_animCoroutine != null) StopCoroutine(m_animCoroutine);
 
         //拡大前の設定

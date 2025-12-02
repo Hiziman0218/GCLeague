@@ -18,7 +18,7 @@ namespace Game.Enum
     public enum QuizType
     {
         Normal,
-        Anabuki,
+        Anabuki
     }
 
     //UIの種類
@@ -27,5 +27,8 @@ namespace Game.Enum
         HUD,     //ゲーム中にずっと表示されるUI
         Timer,   //回答中の制限時間を表示するUI
         StartUI, //ゲーム開始時にゲームの設定を表示するUI
+        QuizUI,  //クイズ内容を表示するUI
+        CorrectUI,   //正解時に表示されるUI
+        IncorrectUI, //不正解時に表示されるUI
     }
 }

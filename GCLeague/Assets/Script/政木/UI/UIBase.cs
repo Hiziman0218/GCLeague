@@ -5,10 +5,11 @@ public class UIBase : MonoBehaviour
 {
     [SerializeField] protected GameObject root; //このUIの親オブジェクト
 
-    private bool m_isReceptionShow = false; //表示の信号を受け取ったか
-    private bool m_isReceptionHide = false; //非表示の信号を受け取ったか
-    private bool m_isShowClear = false; //表示が完了したか
-    private bool m_isHideClear = false; //非表示が完了したか
+    [Header("デバッグ用表示")]
+    [SerializeField] private bool m_isReceptionShow = false; //表示の信号を受け取ったか
+    [SerializeField] private bool m_isReceptionHide = false; //非表示の信号を受け取ったか
+    [SerializeField] private bool m_isShowClear = false; //表示が完了したか
+    [SerializeField] private bool m_isHideClear = false; //非表示が完了したか
     protected Action ShowEvent; //表示時のイベント
     protected Action HideEvent; //非表示時のイベント
 
@@ -30,6 +31,7 @@ public class UIBase : MonoBehaviour
         }
         //そうでなければそのまま表示
         root?.SetActive(true);
+        ShowClear();
     }
 
     /// <summary>
@@ -48,8 +50,10 @@ public class UIBase : MonoBehaviour
             HideEvent.Invoke();
             return;
         }
+
         //そうでなければそのまま非表示
         root?.SetActive(false);
+        HideClear();
     }
 
     /// <summary>
@@ -59,6 +63,7 @@ public class UIBase : MonoBehaviour
     {
         m_isReceptionShow = false;
         m_isShowClear = true;
+        m_isHideClear = false;
     }
 
     /// <summary>
@@ -67,6 +72,7 @@ public class UIBase : MonoBehaviour
     protected void HideClear()
     {
         m_isReceptionHide = false;
+        m_isShowClear = false;
         m_isHideClear = true;
     }
 

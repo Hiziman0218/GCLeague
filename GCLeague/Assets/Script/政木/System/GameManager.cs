@@ -3,29 +3,33 @@ using Game.Enum;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("参照設定")]
+    [SerializeField] private QuizManager m_quizManager; //クイズマネージャー
+    [SerializeField] private UIManager m_UIManager;     //UIマネージャー
+    [SerializeField] private DebugPlayer m_debugPlayer;   //デバッグ用のプレイヤー(後に削除)
+
+    [Header("詳細設定")]
+    [SerializeField] private float m_startTime = 5f; //GameStart時に待機する時間
+
     private GameState m_state = GameState.GameStart; //ゲームの状態
     private GameSetting m_gameSetting = null; //ゲーム開始前に設定される内容
     private QuizRuntime m_currentQuiz = null; //出題されているクイズ格納用
-    private int m_currentDifficulty = 1; //現在出題されるクイズの難易度
-    private int m_difficultyChangeCount = 0; //難易度を上昇させるためのカウント
+    private int m_currentDifficulty = 1;      //現在出題されるクイズの難易度
+    private int m_difficultyChangeCount = 0;  //難易度を上昇させるためのカウント
     private int m_quizNumber = 10;       //今回のゲームにおける問題数
     private int m_clearCount = 0;        //クリアした問題数
     private int m_life = 3;              //残り残機
     private float m_elapsedTime = 0f;    //経過時間計測用
-    private float m_startTime = 5f;      //GameStart時に待機する時間
     private float m_thinkingTime = 60f;  //一回の回答にかけられる時間
     private bool m_isClearQuiz = false;  //問題を正解したか
-
-    [SerializeField] private QuizManager m_quizManager; //クイズマネージャー(シーン上から設定)
-    [SerializeField] private UIManager m_UIManager;     //UIマネージャー(シーン上から設定)
 
     private void Awake()
     {
         //ゲームの状態を開始時に初期化
         m_state = GameState.GameStart;
 
-        //デバッグ用にマジックナンバーを使用、最終的に削除
-        m_gameSetting = new GameSetting(QuizType.Normal, 1, 10, 5, 3, 90f);
+        //デバッグ用にマジックナンバーを使用 最終的に削除
+        m_gameSetting = new GameSetting(QuizType.Normal, 1, 10, 5, 3, 10f);
     }
 
     private void Start()
@@ -101,9 +105,6 @@ public class GameManager : MonoBehaviour
     //各状態の更新処理
     private void UpdateGameStart()
     {
-        //開始前の内容を表示
-        if (!m_UIManager.GetIsShowClear(UIType.StartUI)) m_UIManager.ShowStartUI();
-
         //経過時間を加算
         m_elapsedTime += Time.deltaTime;
 
@@ -111,12 +112,17 @@ public class GameManager : MonoBehaviour
         if (m_elapsedTime >= m_startTime)
         {
             if(!m_UIManager.GetIsHideClear(UIType.StartUI)) m_UIManager.HideStartUI();
-            //非表示処理が終わっていたらクイズの出題へ移行
+            //非表示処理が終わっていたら、HUDを表示しクイズの出題へ移行
             if (m_UIManager.GetIsHideClear(UIType.StartUI))
             {
+                m_UIManager.ShowHUD();
                 ChangeState(GameState.Question);
+                return;
             }
         }
+
+        //開始前の内容を表示
+        if (!m_UIManager.GetIsShowClear(UIType.StartUI)) m_UIManager.ShowStartUI();
     }
 
     private void UpdateQuestion()
@@ -131,9 +137,13 @@ public class GameManager : MonoBehaviour
         if (m_currentQuiz != null)
         {
             //UIクラスに取得したクイズを設定
-            //ここに処理を追加
+            if (!m_UIManager.GetIsShowClear(UIType.QuizUI))
+            {
+                m_UIManager.ShowQuizUI(m_currentQuiz.Data.QuestionText, m_currentQuiz.Data.Choice1, m_currentQuiz.Data.Choice2,
+                m_currentQuiz.Data.Choice1Image, m_currentQuiz.Data.Choice2Image);
+            }
             //クイズの表示が終わったら、回答中へ移行
-            if (true /*UIクラスから「表示が終わったか」を取得する処理を追加*/)
+            if (m_UIManager.GetIsShowClear(UIType.QuizUI))
             {
                 ChangeState(GameState.Thinking);
             }
@@ -148,10 +158,19 @@ public class GameManager : MonoBehaviour
         //経過時間を加算
         m_elapsedTime += Time.deltaTime;
 
-        //経過時間が、一回の回答にかけられる時間を超えていたら、回答判定へ移行
+        //経過時間が一回の回答にかけられる時間を超えていたら、クイズを非表示にし、
+        //非表示が終わったら回答判定へ移行
         if (m_elapsedTime > m_thinkingTime)
         {
-            ChangeState(GameState.Judging);
+            if (!m_UIManager.GetIsHideClear(UIType.QuizUI))
+            {
+                m_UIManager.HideQuizUI();
+            }
+
+            if (m_UIManager.GetIsHideClear(UIType.QuizUI))
+            {
+                ChangeState(GameState.Judging);
+            }
         }
     }
 
@@ -161,8 +180,8 @@ public class GameManager : MonoBehaviour
         m_UIManager.HideTimer();
 
         //プレイヤーの回答を取得し、正誤によって分岐
-        //IsCorrectの引数はプレイヤーまたはトロッコから取得(現在はデバッグ用に1)
-        if (m_currentQuiz.IsCorrect(1/*ここに処理を追加*/))
+        //IsCorrectの引数はプレイヤーまたはトロッコから取得
+        if (m_currentQuiz.IsCorrect(m_debugPlayer.GetSideValue() /*ここにプレイヤーからの回答受け取り処理を追加*/))
         {
             m_isClearQuiz = true;
             ChangeState(GameState.Standby);
@@ -176,72 +195,106 @@ public class GameManager : MonoBehaviour
 
     private void UpdateStandby()
     {
-        //ここで正誤によってUIを切り替えて表示
-        //ここに処理を追加
+        //正誤によってUIを切り替えて表示
+        if (m_isClearQuiz)
+        {
+            if (!m_UIManager.GetIsShowClear(UIType.CorrectUI))
+            {
+                m_UIManager.ShowCorrectUI();
+            }
+        }
+        else
+        {
+            if (!m_UIManager.GetIsShowClear(UIType.IncorrectUI))
+            {
+                m_UIManager.ShowIncorrectUI();
+            }
+        }
 
         //UIとフィールドの演出が終了したら、m_isClearQuizの値に応じて状態を変更
-        //一旦trueとする
-        if (true/*ここに処理を追加*/)
+        if (true/*ここにフィールド演出の処理を追加*/)
         {
             if (m_isClearQuiz)
             {
-                ChangeState(GameState.CorrectAnswer);
+                if (m_UIManager.GetIsShowClear(UIType.CorrectUI))
+                {
+                    ChangeState(GameState.CorrectAnswer);
+                }  
             }
             else
             {
-                ChangeState(GameState.IncorrectAnswer);
+                if (m_UIManager.GetIsShowClear(UIType.IncorrectUI))
+                {
+                    ChangeState(GameState.IncorrectAnswer);
+                } 
             }
         }
     }
 
     private void UpdateCorrectAnswer()
     {
-        //クイズ格納用変数を初期化
-        m_currentQuiz = null;
-
-        //クリアした問題数を加算
-        m_clearCount++;
-        //難易度変更用のカウントを加算
-        m_difficultyChangeCount++;
-
-        //クリアした問題数がこのゲームの問題数と同じなら、ゲームクリアへ移行
-        if (m_clearCount == m_quizNumber)
+        //演出の非表示が終了したら、処理を実行
+        if (!m_UIManager.GetIsHideClear(UIType.CorrectUI))
         {
-            ChangeState(GameState.GameClear);
+            m_UIManager.HideCorrectUI();
         }
-        //まだゲームが終わっていないなら、難易度を上昇させるかを確認した後、クイズの出題へ移行
         else
         {
-            //もし現在の難易度が5より小さいなら(5が最も難しい難易度のため)
-            if(m_currentDifficulty < 5)
+            //クイズ格納用変数を初期化
+            m_currentQuiz = null;
+
+            //クリアした問題数を加算
+            m_clearCount++;
+            //難易度変更用のカウントを加算
+            m_difficultyChangeCount++;
+
+            //クリアした問題数がこのゲームの問題数と同じなら、ゲームクリアへ移行
+            if (m_clearCount == m_quizNumber)
             {
-                //難易度変更用のカウントが、今回のゲームにおける問題数を3で割った数と同じなら
-                //カウントを初期化して難易度を上昇
-                if(m_difficultyChangeCount == m_quizNumber / 3)
-                {
-                    m_difficultyChangeCount = 0;
-                    m_currentDifficulty++;
-                }
+                ChangeState(GameState.GameClear);
             }
-            ChangeState(GameState.Question);
+            //まだゲームが終わっていないなら、難易度を上昇させるかを確認した後、クイズの出題へ移行
+            else
+            {
+                //もし現在の難易度が5より小さいなら(5が最も難しい難易度のため)
+                if (m_currentDifficulty < 5)
+                {
+                    //難易度変更用のカウントが、今回のゲームにおける問題数を3で割った数と同じなら
+                    //カウントを初期化して難易度を上昇
+                    if (m_difficultyChangeCount == m_quizNumber / 3)
+                    {
+                        m_difficultyChangeCount = 0;
+                        m_currentDifficulty++;
+                    }
+                }
+                ChangeState(GameState.Question);
+            }
         }
     }
 
     private void UpdateIncorrectAnswer()
     {
-        //クイズ格納用変数を初期化
-        m_currentQuiz = null;
-        
-        //ライフが既に0なら、ゲームオーバーへ移行
-        if(m_life == 0)
+        //演出の非表示が終了したら、処理を実行
+        if (!m_UIManager.GetIsHideClear(UIType.IncorrectUI))
         {
-            ChangeState(GameState.GameOver);
+            m_UIManager.HideIncorrectUI();
         }
-        //まだ残機が残っているなら、残機を減少させ、クイズの出題へ移行
         else
         {
-            m_life--;
-            ChangeState(GameState.Question);
+            //クイズ格納用変数を初期化
+            m_currentQuiz = null;
+
+            //ライフが既に0なら、ゲームオーバーへ移行
+            if (m_life == 0)
+            {
+                ChangeState(GameState.GameOver);
+            }
+            //まだ残機が残っているなら、残機を減少させ、クイズの出題へ移行
+            else
+            {
+                m_life--;
+                ChangeState(GameState.Question);
+            }
         }
     }
 
@@ -249,12 +302,14 @@ public class GameManager : MonoBehaviour
     {
         //UIにゲームクリアの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
         //ここに処理を追加
+        Debug.Log("ゲームクリア");
     }
 
     private void UpdateGameOver()
     {
         //UIにゲームオーバーの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
         //ここに処理を追加
+        Debug.Log("ゲームオーバー");
     }
 
     /// <summary>

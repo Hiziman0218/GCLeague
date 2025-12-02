@@ -9,6 +9,15 @@ public class GameSetting
     private int m_life;          //残機
     private float m_timer;       //一回の回答における制限時間
 
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
+    /// <param name="QuizType">クイズタイプ</param>
+    /// <param name="Difficulty">問題の難易度</param>
+    /// <param name="QuizNumber">総問題数</param>
+    /// <param name="PlayerNumber">プレイヤーの人数</param>
+    /// <param name="Life">残機</param>
+    /// <param name="Timer">回答の制限時間</param>
     public GameSetting(QuizType QuizType, int Difficulty, int QuizNumber, int PlayerNumber, int Life, float Timer)
     {
         m_quizType = QuizType;

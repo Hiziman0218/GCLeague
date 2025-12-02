@@ -32,7 +32,9 @@ public class HUD : UIBase
     private void UpdateHUD()
     {
         m_currentDifficulty.text = $"{m_gameManager.GetCurrentDifficulty()}";
-        m_currentQuizNumber.text = $"{m_gameManager.GetCurrentQuizNumber()}";
+        int QuizNumber = m_gameManager.GetCurrentQuizNumber();
+        if (QuizNumber >= m_gameSetting.GetQuizNumber()) QuizNumber = m_gameSetting.GetQuizNumber();
+        m_currentQuizNumber.text = $"{QuizNumber}";
         m_life.text = $"{m_gameManager.GetLife()}";
         m_playerNumber.text = $"{m_gameSetting.GetPlayerNumber()}l";
     }

@@ -13,6 +13,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] private HUD m_hud;     //画面上に常に表示するUI(ヘッドアップディスプレイ)
     [SerializeField] private Timer m_timer; //回答中に表示される残り時間
     [SerializeField] private StartUI m_startUI; //ゲーム開始時に表示されるゲームの設定
+    [SerializeField] private QuizUI m_quizUI;   //クイズ内容を表示するUI
+    [SerializeField] private CorrectUI m_correctUI;     //正解時に表示するUI
+    [SerializeField] private IncorrectUI m_incorrectUI; //不正解時に表示するUI
 
     private void Awake()
     {
@@ -86,13 +89,70 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
+    /// クイズUIを表示
+    /// </summary>
+    /// <param name="question">問題文</param>
+    /// <param name="answer1">回答文1</param>
+    /// <param name="answer2">回答文2</param>
+    /// <param name="choise1">回答画像1</param>
+    /// <param name="choise2">回答画像2</param>
+    public void ShowQuizUI(string question, string answer1, string answer2, Sprite choise1, Sprite choise2)
+    {
+        m_quizUI.SetQuiz(question, answer1, answer2, choise1, choise2);
+        m_quizUI.Show();
+    }
+
+    /// <summary>
+    /// クイズUIを非表示
+    /// </summary>
+    public void HideQuizUI()
+    {
+        m_quizUI.Hide();
+    }
+
+    /// <summary>
+    /// 正解UIを表示
+    /// </summary>
+    public void ShowCorrectUI()
+    {
+        m_correctUI.Show();
+    }
+
+    /// <summary>
+    /// 正解UIを非表示
+    /// </summary>
+    public void HideCorrectUI()
+    {
+        m_correctUI.Hide();
+    }
+
+    /// <summary>
+    /// 不正解UIを表示
+    /// </summary>
+    public void ShowIncorrectUI()
+    {
+        m_incorrectUI.Show();
+    }
+
+    /// <summary>
+    /// 不正解UIを非表示
+    /// </summary>
+    public void HideIncorrectUI()
+    {
+        m_incorrectUI.Hide();
+    }
+
+    /// <summary>
     /// 全てのUIを非表示
     /// </summary>
     public void HideAll()
     {
-        m_hud.Hide();
-        m_timer.Hide();
-        m_startUI.Hide();
+        m_hud.gameObject.SetActive(false);
+        m_timer.gameObject.SetActive(false);
+        m_startUI.gameObject.SetActive(false);
+        m_quizUI.gameObject.SetActive(false);
+        m_correctUI.gameObject.SetActive(false);
+        m_incorrectUI.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -110,6 +170,12 @@ public class UIManager : MonoBehaviour
                 return m_timer.IsShowClear();
             case UIType.StartUI:
                 return m_startUI.IsShowClear();
+            case UIType.QuizUI:
+                return m_quizUI.IsShowClear();
+            case UIType.CorrectUI:
+                return m_correctUI.IsShowClear();
+            case UIType.IncorrectUI:
+                return m_incorrectUI.IsShowClear();
             default:
                 return false;
         }
@@ -130,6 +196,12 @@ public class UIManager : MonoBehaviour
                 return m_timer.IsHideClear();
             case UIType.StartUI:
                 return m_startUI.IsHideClear();
+            case UIType.QuizUI:
+                return m_quizUI.IsHideClear();
+            case UIType.CorrectUI:
+                return m_correctUI.IsHideClear();
+            case UIType.IncorrectUI:
+                return m_incorrectUI.IsHideClear();
             default:
                 return false;
         }
