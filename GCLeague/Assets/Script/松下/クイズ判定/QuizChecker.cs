@@ -3,44 +3,46 @@ using UnityEngine;
 public class QuizChecker : MonoBehaviour
 {
     [SerializeField]
-    private QuizArea areaA;
+    private QuizArea m_AreaLeft;
     [SerializeField]
-    private QuizArea areaB;
+    private QuizArea m_AreaRight;
 
-    void Update()
+    public enum AnswerSide { Left = 0, Right = 1 }
+
+    AnswerSide PlayerCheck()
     {
-        //とりあえずスペースキーで判定を開始
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (m_AreaLeft.playerCount > m_AreaRight.playerCount)
         {
-            if (areaA.playerCount > areaB.playerCount)
+            //Debug.Log("Aの方が多い！");
+            return AnswerSide.Left;
+        }
+        else if (m_AreaRight.playerCount > m_AreaLeft.playerCount)
+        {
+            //Debug.Log("Bの方が多い！");
+            return AnswerSide.Right;
+        }
+        else
+        {
+            //両方同じ人数ならホストの選択優先
+            bool hostInA = m_AreaLeft.players.Exists(p => p.isHostPlayer);
+            bool hostInB = m_AreaRight.players.Exists(p => p.isHostPlayer);
+
+            if (hostInA && !hostInB)
             {
-                //Aが多かった時の処理
-                Debug.Log("Aの方が多い！");
+                //Debug.Log("同じ人数！ホストがAにいるのでA優先！");
+                return AnswerSide.Left;
             }
-            else if (areaB.playerCount > areaA.playerCount)
+            else if (hostInB && !hostInA)
             {
-                //Bが多かった時の処理
-                Debug.Log("Bの方が多い！");
+                //Debug.Log("同じ人数！ホストがBにいるのでB優先！");
+                return AnswerSide.Right;
             }
             else
             {
-                //同じ人数だった時の処理
-                // 同じ人数 → ホストがいるエリアを優先
-                bool hostInA = areaA.players.Exists(p => p.isHostPlayer);
-                bool hostInB = areaB.players.Exists(p => p.isHostPlayer);
-
-                if (hostInA && !hostInB)
-                {
-                    Debug.Log("同じ人数！ホストがAにいるのでA優先！");
-                }
-                else if (hostInB && !hostInA)
-                {
-                    Debug.Log("同じ人数！ホストがBにいるのでB優先！");
-                }
-                else
-                {
-                    Debug.Log("同じ人数！ホストもいないか両方にいる");
-                }
+                //念のためのセーフティ
+                //Debug.Log("同じ人数！ホストもいないか両方にいる");
+                //左の選択肢を選んだことにする
+                return AnswerSide.Left;
             }
         }
     }
