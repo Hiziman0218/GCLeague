@@ -99,6 +99,7 @@ public class ClientChatSystemTester : NetworkBehaviour
             OnSendButton();
         }
 
+        /*
         if (Input.GetKeyDown(KeyCode.Q))
         {
             // 全プレイヤーに「待たせたな、みんなっ!!」を送信
@@ -123,6 +124,7 @@ public class ClientChatSystemTester : NetworkBehaviour
             // 1番目のプレイヤーに「お前が…ナンバーワンだ!」を送信
             CmdSendMessage(m_PlayerName + ": お前が…ナンバーワンだ!", null, null, 0);
         }
+        */
     }
 
     

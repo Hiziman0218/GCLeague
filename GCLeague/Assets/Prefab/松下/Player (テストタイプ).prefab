@@ -117,7 +117,7 @@ GameObject:
   - component: {fileID: 7927095314344960045}
   - component: {fileID: 3697737723956530093}
   - component: {fileID: 3394914988714529911}
-  - component: {fileID: 8966238569431074432}
+  - component: {fileID: -616817474870023400}
   - component: {fileID: 4403550234960588643}
   - component: {fileID: 7200997508788689844}
   - component: {fileID: 3673709143261663435}
@@ -210,7 +210,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   m_PlayerName: 
---- !u!114 &8966238569431074432
+--- !u!114 &-616817474870023400
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -219,10 +219,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 4730116614833924998}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 221449dd9e5ef6145a215fd73c6ec015, type: 3}
+  m_Script: {fileID: 11500000, guid: 4ef41eac87df70244a0d58e4e49fe9cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  menuPanel: {fileID: 0}
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  difficultyDropdown: {fileID: 0}
+  modeDropdown: {fileID: 0}
+  difficulty: 0
+  mode: 0
 --- !u!114 &4403550234960588643
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -19,6 +19,12 @@ public class LocalMenuController : MonoBehaviour
         //Escapeキーでメニューの開閉
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            if (!menuPanel)
+            {
+                // シーン内の "MenuPanel" を名前で探す
+                menuPanel = GameObject.Find("MenuPanel");
+            }
+
             isOpen = !isOpen;
             menuPanel.SetActive(isOpen);
         }

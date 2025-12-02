@@ -16,6 +16,9 @@ namespace MirrorChatSystems
         [SyncVar(hook = nameof(OnNameChanged)), Header("プレイヤー名")]
         public string m_PlayerName;
 
+        [SyncVar]
+        public bool isHostPlayer;
+
 
         // プレイヤー名を設定するメソッド（サーバー側でのみ呼ばれる）
         [Server]

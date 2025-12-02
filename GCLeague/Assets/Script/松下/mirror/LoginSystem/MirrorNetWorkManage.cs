@@ -84,6 +84,11 @@ namespace MirrorChatSystems
             GameObject player = Instantiate(playerPrefab);
             PlayerNetWorkSystem playerNetSystem = player.GetComponent<PlayerNetWorkSystem>();
 
+            if (NetworkServer.connections.Count == 1)
+            {
+                playerNetSystem.isHostPlayer = true;
+            }
+
             if (playerNetSystem != null)
             {
                 string name = null;
