@@ -1,25 +1,31 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class QuizArea : MonoBehaviour
 {
-    [Header("エリアにいる人数")]
-    public int playerCount = 0;
+    [Header("エリアに乗っているプレイヤー情報")]
+    public List<MirrorChatSystems.PlayerNetWorkSystem> players = new List<MirrorChatSystems.PlayerNetWorkSystem>();
+    public MirrorChatSystems.PlayerNetWorkSystem m_player;
 
-    void OnTriggerEnter(Collider other)
+    public int playerCount => players.Count;
+
+    //エリア内のプレイヤーをリストに追加
+    private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        var player = other.GetComponent<MirrorChatSystems.PlayerNetWorkSystem>();
+        if (player != null && !players.Contains(player))
         {
-            playerCount++;
+            players.Add(player);
         }
     }
 
-    void OnTriggerExit(Collider other)
+    //エリア外にいったプレイヤーをリストから削除
+    private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player"))
+        var player = other.GetComponent<MirrorChatSystems.PlayerNetWorkSystem>();
+        if (player != null && players.Contains(player))
         {
-            playerCount--;
+            players.Remove(player);
         }
     }
 }

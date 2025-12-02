@@ -273,7 +273,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e098e44817794f041a3fa76e16e23bd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCount: 0
+  players: []
+  m_player: {fileID: 0}
 --- !u!1 &100339123
 GameObject:
   m_ObjectHideFlags: 0
@@ -569,7 +570,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e098e44817794f041a3fa76e16e23bd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCount: 0
+  players: []
+  m_player: {fileID: 0}
 --- !u!4 &700889032
 Transform:
   m_ObjectHideFlags: 0
@@ -1200,7 +1202,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e098e44817794f041a3fa76e16e23bd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerCount: 0
+  players: []
+  m_player: {fileID: 0}
 --- !u!1 &1949191319
 GameObject:
   m_ObjectHideFlags: 0
