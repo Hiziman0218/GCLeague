@@ -810,7 +810,7 @@ GameObject:
   - component: {fileID: 72961649}
   - component: {fileID: 72961650}
   m_Layer: 0
-  m_Name: GameManager
+  m_Name: CaveGameManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -855,7 +855,7 @@ MonoBehaviour:
   laneSwitchSpeed: 5
   caveSegmentL: {fileID: 1669905631}
   caveSegmentR: {fileID: 25782397}
-  isRightAnswer: 1
+  isRightAnswer: 0
 --- !u!4 &76508473 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1288455430353388173, guid: 39eb1fcbdf2df5e4eb365a71afb44a6a, type: 3}
@@ -5129,7 +5129,6 @@ Transform:
   m_Children:
   - {fileID: 1283656857}
   - {fileID: 674927388}
-  - {fileID: 2015769610}
   m_Father: {fileID: 1596689833}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &787996076 stripped
@@ -12579,37 +12578,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6758493725031675876, guid: 1f3f4ceca3b84b241b37810b20431b60, type: 3}
   m_PrefabInstance: {fileID: 577922082}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2015769609
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2015769610}
-  m_Layer: 0
-  m_Name: rail3Point
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2015769610
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2015769609}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -2, y: 4.953, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 782146057}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2023189182
 PrefabInstance:
   m_ObjectHideFlags: 0

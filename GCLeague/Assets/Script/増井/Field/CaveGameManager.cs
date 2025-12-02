@@ -101,25 +101,33 @@ public class CaveGameManager : MonoBehaviour
     // ============================
     void HandleLaneInput()
     {
+        // --- 左レーン ---
         if (Input.GetKeyDown(KeyCode.A))
         {
             Debug.Log("[Input] 左レーン選択");
             canInput = false;
-            isRightLane = false;
             targetLaneOffset = new Vector3(rail1Point.localPosition.x, 0, 0);
 
-            SpawnSpecialCave(isRightAnswer ? caveSegmentL : caveSegmentR, "Aキー押下");
+            bool isCorrect = (isRightAnswer == false); // 左が正解なら true
+
+            // 正解ならL、不正解ならR を生成
+            SpawnSpecialCave(isCorrect ? caveSegmentL : caveSegmentR, "Aキー押下");
         }
+
+        // --- 右レーン ---
         else if (Input.GetKeyDown(KeyCode.S))
         {
             Debug.Log("[Input] 右レーン選択");
             canInput = false;
-            isRightLane = true;
             targetLaneOffset = new Vector3(rail2Point.localPosition.x, 0, 0);
 
-            SpawnSpecialCave(isRightAnswer ? caveSegmentR : caveSegmentL, "Sキー押下");
+            bool isCorrect = (isRightAnswer == true); // 右が正解なら true
+
+            // 正解ならR、不正解ならL を生成
+            SpawnSpecialCave(isCorrect ? caveSegmentR : caveSegmentL, "Sキー押下");
         }
     }
+
 
     // ============================
     // 🧩 L/R 洞窟生成処理
@@ -138,7 +146,7 @@ public class CaveGameManager : MonoBehaviour
         activeSpecialCave.transform.localPosition = Vector3.zero;
         activeSpecialCave.transform.localRotation = Quaternion.identity;
 
-        // ③ 1フレーム後に unparent（※ここが変更点）
+        // ③ 1フレーム後に unparent
         StartCoroutine(DetachSpecialNextFrame(activeSpecialCave));
 
         // ④ ここが重要：レーン位置（X）を現在の targetLaneOffset に合わせる！
