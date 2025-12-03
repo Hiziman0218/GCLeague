@@ -39,9 +39,8 @@ public class QuizChecker : MonoBehaviour
             }
             else
             {
-                //念のためのセーフティ
                 //Debug.Log("同じ人数！ホストもいないか両方にいる");
-                //左の選択肢を選んだことにする
+                //念のためのセーフティでホストを確認できなかった場合左の選択肢を選んだことにする
                 return AnswerSide.Left;
             }
         }
