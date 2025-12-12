@@ -41,7 +41,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
     private Rigidbody m_Rigidbody;
     [Header("サーバーへ渡す移動力"), SerializeField]
     private Vector3 m_InputVector;
-    [Header("移動フラグ"),SerializeField]
+    [Header("移動フラグ"), SerializeField]
     private bool m_IsMoving = false;
     [Header("移動アニメーションスピード"), SerializeField]
     private float m_AnimeMoveSpeed = 0;
@@ -52,7 +52,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
     [Header("キャラクターの旋回力"), SerializeField]
     private float m_RotationSpeed = 10.0f;
 
-    [Header("[Shadow]新しい位置情報"), SerializeField,SyncVar]
+    [Header("[Shadow]新しい位置情報"), SerializeField, SyncVar]
     private Vector3 m_NewPosition;
 
     [Header("[Shadow]新しい向き情報"), SerializeField, SyncVar]
@@ -127,7 +127,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
 
         //プレイヤーの向きを再設定する
         PlayerRotation(
-            m_InputVector, 
+            m_InputVector,
             m_CameraLink.transform.GetChild(0).forward,
             m_CameraLink.transform.GetChild(0).right,
             ref m_NewPosition,
@@ -136,24 +136,24 @@ public class MirrorPlayerMoves : NetworkBehaviour
         //サーバーへ、移動位置と向き情報を転送
         ServerMove(this.transform.position, m_NewRotation, m_InputVector);
 
-    //サーバーへ移動量を転送
-    /*
-    ShadowMove(m_InputVector, m_CameraLink.transform.GetChild(0).forward, m_CameraLink.transform.GetChild(0).right);
-    */
-    //自身へ転送
+        //サーバーへ移動量を転送
+        /*
+        ShadowMove(m_InputVector, m_CameraLink.transform.GetChild(0).forward, m_CameraLink.transform.GetChild(0).right);
+        */
+        //自身へ転送
 
-}
+    }
 
-/// <summary>
-/// サーバー側が受け取る処理[移動処理]
-/// </summary>
-/// <param name="direction">移動量</param>
-//↓サーバーへデータ転送するシンボル
-[Command]
+    /// <summary>
+    /// サーバー側が受け取る処理[移動処理]
+    /// </summary>
+    /// <param name="direction">移動量</param>
+    //↓サーバーへデータ転送するシンボル
+    [Command]
     void ServerMove(
-        Vector3 N_Position, //プレイヤーの座標
-        Quaternion N_Rotation,  //プレイヤーの向き
-        Vector3 N_InputVector)  //キー入力
+            Vector3 N_Position, //プレイヤーの座標
+            Quaternion N_Rotation,  //プレイヤーの向き
+            Vector3 N_InputVector)  //キー入力
     {
         //isLocalPlayer=プレイヤーの本体
         //!isLocalPlayer=プレイヤーではない

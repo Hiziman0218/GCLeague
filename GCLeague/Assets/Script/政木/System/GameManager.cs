@@ -4,12 +4,15 @@ using Game.Enum;
 public class GameManager : MonoBehaviour
 {
     [Header("参照設定")]
+    [SerializeField] private GameSystemManager m_systemManager; //システムマネージャー
     [SerializeField] private QuizManager m_quizManager; //クイズマネージャー
     [SerializeField] private UIManager m_UIManager;     //UIマネージャー
-    [SerializeField] private DebugPlayer m_debugPlayer;   //デバッグ用のプレイヤー(後に削除)
+    [SerializeField] private QuizChecker m_quizChecker; //回答受け取り用
 
     [Header("詳細設定")]
     [SerializeField] private float m_startTime = 5f; //GameStart時に待機する時間
+    [SerializeField] private GameObject m_lobbyObjects; //ロビー時のみ存在するオブジェクト
+    [SerializeField] private GameObject m_gameObjects;  //ゲーム時のみ存在するオブジェクト
 
     private GameState m_state = GameState.GameStart; //ゲームの状態
     private GameSetting m_gameSetting = null; //ゲーム開始前に設定される内容
@@ -23,33 +26,28 @@ public class GameManager : MonoBehaviour
     private float m_thinkingTime = 60f;  //一回の回答にかけられる時間
     private bool m_isClearQuiz = false;  //問題を正解したか
 
+    private bool debug = true;
+
     private void Awake()
     {
         //ゲームの状態を開始時に初期化
-        m_state = GameState.GameStart;
+        m_state = GameState.Lobby;
+        GameEnd();
 
-        //デバッグ用にマジックナンバーを使用 最終的に削除
-        m_gameSetting = new GameSetting(QuizType.Normal, 1, 10, 5, 3, 10f);
-    }
-
-    private void Start()
-    {
-        //UIマネージャーにゲーム設定を設定
-        m_UIManager.SetManagers(this, m_gameSetting);
-        //出題するクイズの難易度を設定
-        m_currentDifficulty = m_gameSetting.GetDifficulty();
-        //今回のゲームにおける問題数を設定
-        m_quizNumber = m_gameSetting.GetQuizNumber();
-        //残機を設定
-        m_life = m_gameSetting.GetLife();
-        //一回の回答にかけられる時間を設定
-        m_thinkingTime = m_gameSetting.GetTimer();
+        //システムマネージャーを取得できていたら、設定を取得
+        if(m_systemManager != null)
+        {
+            m_gameSetting = m_systemManager.GetGameSetting();
+        }
     }
 
     private void Update()
     {
         switch (m_state)
         {
+            case GameState.Lobby:
+                UpdateLobby();
+                break;
             case GameState.GameStart:
                 UpdateGameStart();
                 break;
@@ -77,6 +75,9 @@ public class GameManager : MonoBehaviour
             case GameState.GameOver:
                 UpdateGameOver();
                 break;
+            case GameState.WaitFade:
+                UpdateWaitFade();
+                break;
             default:
                 break;
         }
@@ -103,6 +104,19 @@ public class GameManager : MonoBehaviour
     }
 
     //各状態の更新処理
+
+    private void UpdateLobby()
+    {
+        //フェードアウトが完了したら、ゲーム開始の用意
+        if(m_systemManager.IsFadeOutFinished()) GameStart();
+
+        //フェードインが完了したら、ゲーム開始
+        if (m_systemManager.IsFadeInFinished())
+        {
+            ChangeState(GameState.GameStart);
+        }
+    }
+
     private void UpdateGameStart()
     {
         //経過時間を加算
@@ -181,7 +195,7 @@ public class GameManager : MonoBehaviour
 
         //プレイヤーの回答を取得し、正誤によって分岐
         //IsCorrectの引数はプレイヤーまたはトロッコから取得
-        if (m_currentQuiz.IsCorrect(m_debugPlayer.GetSideValue() /*ここにプレイヤーからの回答受け取り処理を追加*/))
+        if (m_currentQuiz.IsCorrect((int)m_quizChecker.PlayerCheck() /*ここにプレイヤーからの回答受け取り処理を追加*/))
         {
             m_isClearQuiz = true;
             ChangeState(GameState.Standby);
@@ -300,16 +314,91 @@ public class GameManager : MonoBehaviour
 
     private void UpdateGameClear()
     {
-        //UIにゲームクリアの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
-        //ここに処理を追加
+        //UIにゲームクリア演出を申請
+
+        //演出が終了したら、シーン切り替えの演出開始
+        if (debug)
+        {
+            debug = false;
+            m_systemManager.ChangeScene(2.0f, 1.0f);
+        }
+
+        //フェードアウトが終了したら、ゲームを終了し、ロビー状態へ
+        if (m_systemManager.IsFadeOutFinished())
+        {
+            GameEnd();
+            ChangeState(GameState.WaitFade);
+        }
+
         Debug.Log("ゲームクリア");
     }
 
     private void UpdateGameOver()
     {
-        //UIにゲームオーバーの演出を再生させて、演出が終了したら一度だけロビーのシーンへ移行
-        //ここに処理を追加
+        //UIにゲームオーバー演出を申請
+
+        //演出が終了したら、シーン切り替えの演出開始
+        if (debug)
+        {
+            debug = false;
+            m_systemManager.ChangeScene(2.0f, 1.0f);
+        }
+
+        //フェードアウトが終了したら、ゲームを終了し、ロビー状態へ
+        if (m_systemManager.IsFadeOutFinished())
+        {
+            GameEnd();
+            ChangeState(GameState.WaitFade);
+        }
+
         Debug.Log("ゲームオーバー");
+    }
+
+    private void UpdateWaitFade()
+    {
+        if (m_systemManager.IsFadeInFinished())
+        {
+            ChangeState (GameState.Lobby);
+        }
+    }
+
+    /// <summary>
+    /// ゲーム開始
+    /// </summary>
+    private void GameStart()
+    {
+        //ロビー専用のオブジェクトを非有効に設定
+        m_lobbyObjects.gameObject.SetActive(false);
+        //ゲーム専用のオブジェクトを有効に設定
+        m_gameObjects.gameObject.SetActive(true);
+
+        //UIマネージャーにゲーム設定を設定
+        m_UIManager.SetManagers(this, m_gameSetting);
+        //出題するクイズの難易度を設定
+        m_currentDifficulty = m_gameSetting.GetDifficulty();
+        //今回のゲームにおける問題数を設定
+        m_quizNumber = m_gameSetting.GetQuizNumber();
+        //残機を設定
+        m_life = m_gameSetting.GetLife();
+        //一回の回答にかけられる時間を設定
+        m_thinkingTime = m_gameSetting.GetTimer();
+
+        debug = true;
+    }
+
+    /// <summary>
+    /// ゲーム終了
+    /// </summary>
+    private void GameEnd()
+    {
+        //ゲーム専用のオブジェクトを非有効に設定
+        m_gameObjects.gameObject.SetActive(false);
+        //ロビー専用のオブジェクトを有効に設定
+        m_lobbyObjects.gameObject.SetActive(true);
+        //UIの表示/非表示フラグを初期化
+        m_UIManager.Initialize();
+        //クイズの出題フラグを初期化
+        m_quizManager.ResetUsedFlags();
     }
 
     /// <summary>
@@ -347,23 +436,5 @@ public class GameManager : MonoBehaviour
     {
         if(m_state == GameState.Thinking) return m_thinkingTime - m_elapsedTime;
         else return 0;
-    }
-
-    /// <summary>
-    /// ゲームの設定を取得
-    /// </summary>
-    /// <returns></returns>
-    public GameSetting GetSetting()
-    {
-        return m_gameSetting;
-    }
-
-    /// <summary>
-    /// ゲーム内容の設定
-    /// </summary>
-    /// <param name="gameSetting">ロビーで設定した内容</param>
-    public void SetGameSetting(GameSetting gameSetting)
-    {
-        m_gameSetting = gameSetting;
     }
 }

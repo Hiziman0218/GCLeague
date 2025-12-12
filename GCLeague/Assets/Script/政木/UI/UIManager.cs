@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using Game.Enum;
 
 public class UIManager : MonoBehaviour
@@ -8,6 +9,8 @@ public class UIManager : MonoBehaviour
 
     private GameManager m_gameManager; //ゲームマネージャー保持用
     private GameSetting m_gameSetting; //ゲームの設定保持用
+
+    private List<UIBase> m_UIList = new List<UIBase>();
 
     [Header("UI")]
     [SerializeField] private HUD m_hud;     //画面上に常に表示するUI(ヘッドアップディスプレイ)
@@ -37,7 +40,7 @@ public class UIManager : MonoBehaviour
     private void Update()
     {
         //回答中状態なら、残りの回答時間をタイマーに設定
-        if (m_gameManager.GetState() == GameState.Thinking) m_timer.SetTime(m_gameManager.GetLimit());
+        if (m_gameManager != null && m_gameManager.GetState() == GameState.Thinking) m_timer.SetTime(m_gameManager.GetLimit());
     }
 
     /// <summary>
@@ -204,6 +207,26 @@ public class UIManager : MonoBehaviour
                 return m_incorrectUI.IsHideClear();
             default:
                 return false;
+        }
+    }
+
+    /// <summary>
+    /// UIのリストに追加
+    /// </summary>
+    /// <param name="UI"></param>
+    public void AddList(UIBase UI)
+    {
+        m_UIList.Add(UI);
+    }
+
+    /// <summary>
+    /// UIの一括初期化
+    /// </summary>
+    public void Initialize()
+    {
+        foreach(UIBase UI in m_UIList)
+        {
+            UI.Initialize();
         }
     }
 

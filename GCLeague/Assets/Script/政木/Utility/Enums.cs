@@ -3,6 +3,7 @@ namespace Game.Enum
     //ゲームの状態
     public enum GameState
     {
+        Lobby,          //ロビーからのシーン移動中
         GameStart,      //ゲーム開始時のゲーム内容表示
         Question,       //クイズの出題
         Thinking,       //プレイヤーの回答中
@@ -12,6 +13,7 @@ namespace Game.Enum
         IncorrectAnswer,//不正解
         GameClear,      //ゲームクリア
         GameOver,       //ゲームオーバー
+        WaitFade,       //フェードの完了待機
     }
 
     //クイズのタイプ(通常クイズか穴吹クイズ)

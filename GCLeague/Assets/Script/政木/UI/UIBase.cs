@@ -13,6 +13,12 @@ public class UIBase : MonoBehaviour
     protected Action ShowEvent; //表示時のイベント
     protected Action HideEvent; //非表示時のイベント
 
+    private void Start()
+    {
+        //UIManagerのリストに自身を追加
+        UIManager.Instance.AddList(this);
+    }
+
     /// <summary>
     /// UIを表示
     /// </summary>
@@ -96,5 +102,16 @@ public class UIBase : MonoBehaviour
         //イベントが設定されていればこのフラグを、設定されていなければ無効かを返却
         if(HideEvent != null) return m_isHideClear;
         else return !gameObject.activeInHierarchy;
+    }
+
+    /// <summary>
+    /// 初期化処理
+    /// </summary>
+    public void Initialize()
+    {
+        m_isReceptionShow = false;
+        m_isReceptionHide = false;
+        m_isShowClear = false;
+        m_isHideClear = false;
     }
 }

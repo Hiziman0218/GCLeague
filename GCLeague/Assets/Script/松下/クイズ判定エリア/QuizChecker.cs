@@ -9,7 +9,7 @@ public class QuizChecker : MonoBehaviour
 
     public enum AnswerSide { Left = 0, Right = 1 }
 
-    AnswerSide PlayerCheck()
+    public AnswerSide PlayerCheck()
     {
         if (m_AreaLeft.playerCount > m_AreaRight.playerCount)
         {
