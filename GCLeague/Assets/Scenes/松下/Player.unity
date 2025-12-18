@@ -522,8 +522,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33d36eb2b63d51046b835fd70e732910, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_AreaLeft: {fileID: 0}
-  m_AreaRight: {fileID: 0}
+  m_AreaLeft: {fileID: 1921654731}
+  m_AreaRight: {fileID: 80301167}
 --- !u!114 &700889031
 MonoBehaviour:
   m_ObjectHideFlags: 0
