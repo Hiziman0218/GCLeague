@@ -144,7 +144,7 @@ public class CaveGameManager : MonoBehaviour
 
         // ② localPosition をゼロ化（Z/Y のズレ完全防止）
         activeSpecialCave.transform.localPosition = Vector3.zero;
-        activeSpecialCave.transform.localRotation = Quaternion.identity;
+        //activeSpecialCave.transform.localRotation = Quaternion.identity;
 
         // ③ 1フレーム後に unparent
         StartCoroutine(DetachSpecialNextFrame(activeSpecialCave));
