@@ -8,13 +8,32 @@ public class HostControll : NetworkBehaviour
     [SerializeField] private GameSettingUI m_gameSettingPannel;
     [SerializeField] private GameObject m_FinalAnswerButton;
 
+    [SyncVar]
+    public bool isHostPlayer;
+
     public override void OnStartLocalPlayer()
     {
+        /*
         //自身がホストなら、ホスト専用UIを表示し、ゲーム設定用UIを連携
         if (isServer)
         {
             m_lobbyUI.SetActive(true);
             StartCoroutine(BindGameSystemManager());
+        }*/
+
+        if (isHostPlayer)
+        {
+            // 最初に入ったプレイヤーだけ
+            StartCoroutine(BindGameSystemManager());
+        }
+    }
+
+    public override void OnStartServer()
+    {
+        // 接続順で一番最初ならホスト
+        if (NetworkServer.connections.Count == 1)
+        {
+            isHostPlayer = true;
         }
     }
 
@@ -93,5 +112,6 @@ public class HostControll : NetworkBehaviour
         }
 
         GameSystemManager.Instance.SetGameSetting(m_gameSettingPannel);
+        OnGameEnd();
     }
 }

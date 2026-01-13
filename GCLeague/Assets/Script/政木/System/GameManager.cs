@@ -2,6 +2,7 @@ using UnityEngine;
 using Game.Enum;
 using System.Collections;
 using Mirror;
+using System.Collections.Generic;
 
 public class GameManager : NetworkBehaviour
 {
@@ -29,6 +30,7 @@ public class GameManager : NetworkBehaviour
     private float m_waitTime = 1f;      //フェードアウトとインの間で待機する時間
     private bool m_lobbyFlag = false;   //ロビーでの遷移管理用フラグ
     private bool m_isClearQuiz = false; //問題を正解したか
+    private bool m_isGameStart = false; //ゲームが始まっているか
     private bool m_isGameEnd = false;   //ゲームをクリアしているか
 
     [SyncVar(hook = nameof(OnStateChanged))]
@@ -74,11 +76,6 @@ public class GameManager : NetworkBehaviour
         GameEnd();
     }
 
-    public override void OnStartClient()
-    {
-        Debug.Log($"My netId: {netId}");
-    }
-
     private void OnEnable()
     {
         //通知イベントに設定
@@ -98,15 +95,7 @@ public class GameManager : NetworkBehaviour
         if (isServer)
         {
             ServerUpdate();
-            Debug.Log($"[GameManager] CurrentState = {m_state}");
-        }
-        else
-        {
-            if (isClient)
-            {
-                //ここでIDを確認して0番ならボタン表示
-
-            }
+            //Debug.Log($"[GameManager] CurrentState = {m_state}");
         }
     }
 
@@ -343,19 +332,6 @@ public class GameManager : NetworkBehaviour
         //ロビー用のアクティブ設定
         RpcSetGameObjects(false);
 
-        Debug.Log("GameEnd関数呼び出し");
-
-        //ホストを取得し、ホストのロビー用UIを表示
-        if (NetworkServer.localConnection != null)
-        {
-            var hostConn = NetworkServer.localConnection;
-            if (hostConn.identity != null)
-            {
-                HostControll hostPlayer = hostConn.identity.GetComponent<HostControll>();
-                hostPlayer.OnGameEnd();
-            }
-        }
-
         //全てのプレイヤーを初期位置に移動
         foreach (var player in ServerPlayerCollector.GetAllPlayers())
         {
@@ -369,6 +345,7 @@ public class GameManager : NetworkBehaviour
         m_clearCount = 0;
         m_life = -1;
         m_currentTime = 0f;
+        m_isGameStart = false;
         m_isGameEnd = false;
 
         //クイズの出題フラグを初期化
@@ -738,6 +715,7 @@ public class GameManager : NetworkBehaviour
         //m_systemManager.ChangeScene(m_fadeTime, m_waitTime);
         UIManager.Instance.ShowFade(m_fadeTime, m_waitTime);
         m_lobbyFlag = true;
+        m_isGameStart = true;
         /*
         if (!isLocalPlayer) return;
         CmdPushStartButton();*/

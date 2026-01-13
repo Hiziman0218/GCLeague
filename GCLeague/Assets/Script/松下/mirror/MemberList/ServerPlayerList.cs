@@ -37,7 +37,7 @@ public class ServerPlayerList : MonoBehaviour
                 }
             }
             //デバック
-            Debug.Log(m_PlayerListMessage);
+            //Debug.Log(m_PlayerListMessage);
         }
     }
 }
