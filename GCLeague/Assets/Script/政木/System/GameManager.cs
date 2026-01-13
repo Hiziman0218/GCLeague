@@ -68,9 +68,15 @@ public class GameManager : NetworkBehaviour
 
     public override void OnStartServer()
     {
+        Debug.Log("OnStartServer関数呼び出し");
         //ゲームの状態を開始時に初期化
         m_state = GameState.Lobby;
         GameEnd();
+    }
+
+    public override void OnStartClient()
+    {
+        Debug.Log($"My netId: {netId}");
     }
 
     private void OnEnable()
@@ -93,6 +99,14 @@ public class GameManager : NetworkBehaviour
         {
             ServerUpdate();
             Debug.Log($"[GameManager] CurrentState = {m_state}");
+        }
+        else
+        {
+            if (isClient)
+            {
+                //ここでIDを確認して0番ならボタン表示
+
+            }
         }
     }
 
@@ -328,6 +342,8 @@ public class GameManager : NetworkBehaviour
     {
         //ロビー用のアクティブ設定
         RpcSetGameObjects(false);
+
+        Debug.Log("GameEnd関数呼び出し");
 
         //ホストを取得し、ホストのロビー用UIを表示
         if (NetworkServer.localConnection != null)

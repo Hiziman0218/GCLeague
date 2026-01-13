@@ -1701,7 +1701,7 @@ MonoBehaviour:
   m_LogOutWindow: {fileID: 1443135682}
   m_NotServerWindow: {fileID: 2040424300}
   m_UserNameField: {fileID: 71312818}
-  m_MirrorSystemMode: 0
+  m_MirrorSystemMode: 1
   m_DebugMode: 0
   m_MessageObject: {fileID: 0}
 --- !u!114 &321483385
@@ -3268,8 +3268,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1629215683}
   m_HandleRect: {fileID: 1629215682}
   m_Direction: 2
-  m_Value: 0
-  m_Size: 0.9999629
+  m_Value: 1
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
