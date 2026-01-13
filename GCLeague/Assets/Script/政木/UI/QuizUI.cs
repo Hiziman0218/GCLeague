@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using Game.Enum;
 
 public class QuizUI : UIBase
 {
@@ -19,9 +20,19 @@ public class QuizUI : UIBase
     [Header("アニメーション設定")]
     [SerializeField] private float m_expansionDuration = 0.3f; //拡大アニメーション時間
 
+    private Vector3 m_scale = Vector3.one;
+
     private Coroutine m_animCoroutine; //コルーチン管理用
 
     private void Awake()
+    {
+        //初期拡縮を保存
+        m_scale = transform.localScale;
+
+        Type = UIType.QuizUI;
+    }
+
+    public override void RegistrationEvent()
     {
         //表示/非表示イベントを追加
         ShowEvent += ExpansionIn;
@@ -31,18 +42,14 @@ public class QuizUI : UIBase
     /// <summary>
     /// クイズの内容を設定
     /// </summary>
-    /// <param name="question">問題文</param>
-    /// <param name="answer1">回答文1</param>
-    /// <param name="answer2">回答文2</param>
-    /// <param name="choise1">回答画像1</param>
-    /// <param name="choise2">回答画像2</param>
-    public void SetQuiz(string question, string answer1, string answer2, Sprite choise1, Sprite choise2)
+    /// <param name="quiz">表示するクイズ</param>
+    public void SetQuiz(Quiz quiz)
     {
-        if (question != null) m_question.text = question;
-        if (answer1 != null) m_answer1.text = answer1;
-        if (answer2 != null) m_answer2.text = answer2;
-        if (choise1 != null) m_choise1.sprite = choise1;
-        if (choise2 != null) m_choise2.sprite = choise2;
+        m_question.text = quiz.QuestionText;
+        m_answer1.text = quiz.Choice1;
+        m_answer2.text = quiz.Choice2;
+        m_choise1.sprite = quiz.Choice1Image;
+        m_choise2.sprite = quiz.Choice2Image;
     }
 
     /// <summary>
@@ -75,10 +82,10 @@ public class QuizUI : UIBase
         {
             timer += Time.deltaTime;
             float t = Mathf.Clamp01(timer / m_expansionDuration);
-            root.transform.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, t);
+            root.transform.localScale = Vector3.Lerp(Vector3.zero, m_scale, t);
             yield return null;
         }
-        root.transform.localScale = Vector3.one;
+        root.transform.localScale = m_scale;
         ShowClear();
     }
 

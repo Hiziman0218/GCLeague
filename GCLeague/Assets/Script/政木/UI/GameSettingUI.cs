@@ -80,7 +80,7 @@ public class GameSettingUI : MonoBehaviour
     /// <summary>
     /// UIを現在値に合わせて更新
     /// </summary>
-    private void RefreshUI()
+    public void RefreshUI()
     {
         m_isInitializing = true;
 
@@ -99,6 +99,10 @@ public class GameSettingUI : MonoBehaviour
         m_isInitializing = false;
     }
 
+    /// <summary>
+    /// ゲームの設定を設定
+    /// </summary>
+    /// <param name="GameSetting"></param>
     public void SetGameSetting(GameSetting GameSetting)
     {
         m_gameSetting = GameSetting;

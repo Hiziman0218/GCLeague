@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Game.Enum;
 
 public class Timer : UIBase
 {
@@ -8,6 +9,11 @@ public class Timer : UIBase
     [SerializeField] Text m_timer;
 
     private float m_time;
+
+    private void Awake()
+    {
+        Type = UIType.Timer;
+    }
 
     private void Update()
     {

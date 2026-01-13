@@ -1,17 +1,18 @@
 using System;
 using UnityEngine;
+using Game.Enum;
 
 public class UIBase : MonoBehaviour
 {
     [SerializeField] protected GameObject root; //このUIの親オブジェクト
 
-    [Header("デバッグ用表示")]
-    [SerializeField] private bool m_isReceptionShow = false; //表示の信号を受け取ったか
-    [SerializeField] private bool m_isReceptionHide = false; //非表示の信号を受け取ったか
-    [SerializeField] private bool m_isShowClear = false; //表示が完了したか
-    [SerializeField] private bool m_isHideClear = false; //非表示が完了したか
+    private bool m_isReceptionShow = false; //表示の信号を受け取ったか
+    private bool m_isReceptionHide = false; //非表示の信号を受け取ったか
+    private bool m_isShowClear = false; //表示が完了したか
+    private bool m_isHideClear = false; //非表示が完了したか
     protected Action ShowEvent; //表示時のイベント
     protected Action HideEvent; //非表示時のイベント
+    protected UIType Type;
 
     private void Start()
     {
@@ -63,6 +64,15 @@ public class UIBase : MonoBehaviour
     }
 
     /// <summary>
+    /// イベント登録
+    /// </summary>
+    public virtual void RegistrationEvent()
+    {
+        //通常は何もしない
+        //イベントがある場合のみオーバーライドしてイベント登録
+    }
+
+    /// <summary>
     /// 表示完了
     /// </summary>
     protected void ShowClear()
@@ -70,6 +80,7 @@ public class UIBase : MonoBehaviour
         m_isReceptionShow = false;
         m_isShowClear = true;
         m_isHideClear = false;
+        NotifyShowComplete(); //表示完了をUIManagerを経由し通知
     }
 
     /// <summary>
@@ -80,6 +91,7 @@ public class UIBase : MonoBehaviour
         m_isReceptionHide = false;
         m_isShowClear = false;
         m_isHideClear = true;
+        NotifyHideComplete(); //非表示完了をUIManagerを経由し通知
     }
 
     /// <summary>
@@ -113,5 +125,30 @@ public class UIBase : MonoBehaviour
         m_isReceptionHide = false;
         m_isShowClear = false;
         m_isHideClear = false;
+    }
+
+    /// <summary>
+    /// 表示完了を通知
+    /// </summary>
+    protected void NotifyShowComplete()
+    {
+        UIManager.Instance.NotifyShowComplete(this);
+    }
+
+    /// <summary>
+    /// 非表示完了を通知
+    /// </summary>
+    protected void NotifyHideComplete()
+    {
+        UIManager.Instance.NotifyHideComplete(this);
+    }
+
+    /// <summary>
+    /// 自身のUITypeを取得
+    /// </summary>
+    /// <returns></returns>
+    public UIType GetUIType()
+    {
+        return Type;
     }
 }

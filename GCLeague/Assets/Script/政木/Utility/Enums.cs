@@ -32,5 +32,8 @@ namespace Game.Enum
         QuizUI,  //クイズ内容を表示するUI
         CorrectUI,   //正解時に表示されるUI
         IncorrectUI, //不正解時に表示されるUI
+        GameClearUI, //ゲームクリア時に表示されるUI
+        GameOverUI,  //ゲームオーバー時に表示されるUI
+        FadeUI,      //フェードに使用するUI
     }
 }

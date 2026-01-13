@@ -2,6 +2,8 @@ public class QuizRuntime
 {
     //クイズのデータ
     public Quiz Data { get; private set; }
+    //このクイズのID
+    public int QuizID { get; private set; }
     //既に出題されたか
     public bool IsUsed { get; set; }
 
@@ -9,9 +11,10 @@ public class QuizRuntime
     /// コンストラクタ クイズのデータを登録
     /// </summary>
     /// <param name="data">クイズのデータ</param>
-    public QuizRuntime(Quiz data)
+    public QuizRuntime(Quiz data, int quizID)
     {
         Data = data;
+        QuizID = quizID;
         IsUsed = false;
     }
 

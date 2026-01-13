@@ -21,20 +21,26 @@ public class StartUI : UIBase
 
     [Header("アニメーション設定")]
     [SerializeField] private float m_expansionDuration = 0.3f; //拡大アニメーション時間
+    [SerializeField] private float m_autoHideDelay = 5f; //表示している期間
 
     private GameSetting m_gameSetting; //ゲームの設定保持用
     private Coroutine m_animCoroutine; //コルーチン管理用
 
     private void Awake()
     {
-        //表示/非表示イベントを追加
-        ShowEvent += ExpansionIn;
-        HideEvent += ReductionOut;
+        Type = UIType.StartUI;
     }
 
     private void Update()
     {
         UpdateStartUI();
+    }
+
+    public override void RegistrationEvent()
+    {
+        //表示/非表示イベントを追加
+        ShowEvent += ExpansionIn;
+        HideEvent += ReductionOut;
     }
 
     /// <summary>
@@ -104,6 +110,8 @@ public class StartUI : UIBase
         }
         root.transform.localScale = Vector3.one;
         ShowClear();
+
+        m_animCoroutine = StartCoroutine(AutoHideCoroutine());
     }
 
     /// <summary>
@@ -142,5 +150,18 @@ public class StartUI : UIBase
         root.transform.localScale = Vector3.zero;
         root.SetActive(false);
         HideClear();
+    }
+
+    /// <summary>
+    /// 数秒待ってから自動的に非表示
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator AutoHideCoroutine()
+    {
+        //数秒待つ
+        yield return new WaitForSeconds(m_autoHideDelay);
+
+        //非表示開始
+        Hide();
     }
 }

@@ -7,10 +7,13 @@ public class UIManager : MonoBehaviour
     //UIManagerのインスタンス(シングルトン)
     public static UIManager Instance { get; private set; }
 
-    private GameManager m_gameManager; //ゲームマネージャー保持用
     private GameSetting m_gameSetting; //ゲームの設定保持用
 
     private List<UIBase> m_UIList = new List<UIBase>();
+
+    //表示/非表示が完了した時に呼ばれる通知用イベント
+    public event System.Action<UIType> OnUIShowComplete;
+    public event System.Action<UIType> OnUIHideComplete;
 
     [Header("UI")]
     [SerializeField] private HUD m_hud;     //画面上に常に表示するUI(ヘッドアップディスプレイ)
@@ -19,6 +22,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private QuizUI m_quizUI;   //クイズ内容を表示するUI
     [SerializeField] private CorrectUI m_correctUI;     //正解時に表示するUI
     [SerializeField] private IncorrectUI m_incorrectUI; //不正解時に表示するUI
+    [SerializeField] private FadeUI m_fadeUI;           //フェードを管理するUI
 
     private void Awake()
     {
@@ -35,114 +39,70 @@ public class UIManager : MonoBehaviour
     {
         //一度全てのUIを非表示に設定
         HideAll();
-    }
 
-    private void Update()
-    {
-        //回答中状態なら、残りの回答時間をタイマーに設定
-        if (m_gameManager != null && m_gameManager.GetState() == GameState.Thinking) m_timer.SetTime(m_gameManager.GetLimit());
+        //イベントを初期化
+        InitializeEvent();
     }
 
     /// <summary>
-    /// HUDを表示
+    /// 状態を監視し、それに合わせたUIを表示/非表示
     /// </summary>
-    public void ShowHUD()
+    /// <param name="state"></param>
+    public void OnGameStateChanged(GameState state)
     {
-        m_hud.Show();
+        switch (state)
+        {
+            case GameState.Lobby:
+                break;
+            case GameState.GameStart:
+                GameManager gameManager = FindObjectOfType<GameManager>();
+                m_gameSetting = gameManager.GetGameSetting();
+                m_hud.SetGameSetting(m_gameSetting);
+                m_startUI.SetGameSetting(m_gameSetting);
+                break;
+            case GameState.Question:
+                break;
+            case GameState.Thinking:
+                break;
+            case GameState.Standby:
+                break;
+            case GameState.CorrectAnswer:
+                break;
+            case GameState.IncorrectAnswer:
+                break;
+            case GameState.GameClear:
+                ShowFade(); //ゲームクリア演出が完成したら、GameManagerのゲームクリア演出終了時に移行
+                break;
+            case GameState.GameOver:
+                ShowFade(); //ゲームオーバー演出が完成したら、GameManagerのゲームオーバー演出終了時に移行
+                break;
+            case GameState.WaitFade:
+                break;
+            default:
+                break;
+        }
     }
 
     /// <summary>
-    /// HUDを非表示
+    /// 受け取った正誤によってUIを切り替えて表示
     /// </summary>
-    public void HideHUD()
+    /// <param name="isCorrect"></param>
+    public void ShowResult(bool isCorrect)
     {
-        m_hud.Hide();
+        if (isCorrect)
+            m_correctUI.Show();
+        else
+            m_incorrectUI.Show();
     }
 
     /// <summary>
-    /// タイマーを表示
+    /// 受け取った数値を元にフェード演出開始
     /// </summary>
-    public void ShowTimer()
+    /// <param name="fadeTime"></param>
+    /// <param name="waitBetweenFade"></param>
+    public void ShowFade(float fadeTime = 1.0f, float waitBetweenFade = 1.0f)
     {
-        m_timer.Show();
-    }
-
-    /// <summary>
-    /// タイマーを非表示
-    /// </summary>
-    public void HideTimer()
-    {
-        m_timer.Hide();
-    }
-
-    /// <summary>
-    /// スタートUIを表示
-    /// </summary>
-    public void ShowStartUI()
-    {
-        m_startUI.Show();
-    }
-
-    /// <summary>
-    /// スタートUIを非表示
-    /// </summary>
-    public void HideStartUI()
-    {
-        m_startUI.Hide();
-    }
-
-    /// <summary>
-    /// クイズUIを表示
-    /// </summary>
-    /// <param name="question">問題文</param>
-    /// <param name="answer1">回答文1</param>
-    /// <param name="answer2">回答文2</param>
-    /// <param name="choise1">回答画像1</param>
-    /// <param name="choise2">回答画像2</param>
-    public void ShowQuizUI(string question, string answer1, string answer2, Sprite choise1, Sprite choise2)
-    {
-        m_quizUI.SetQuiz(question, answer1, answer2, choise1, choise2);
-        m_quizUI.Show();
-    }
-
-    /// <summary>
-    /// クイズUIを非表示
-    /// </summary>
-    public void HideQuizUI()
-    {
-        m_quizUI.Hide();
-    }
-
-    /// <summary>
-    /// 正解UIを表示
-    /// </summary>
-    public void ShowCorrectUI()
-    {
-        m_correctUI.Show();
-    }
-
-    /// <summary>
-    /// 正解UIを非表示
-    /// </summary>
-    public void HideCorrectUI()
-    {
-        m_correctUI.Hide();
-    }
-
-    /// <summary>
-    /// 不正解UIを表示
-    /// </summary>
-    public void ShowIncorrectUI()
-    {
-        m_incorrectUI.Show();
-    }
-
-    /// <summary>
-    /// 不正解UIを非表示
-    /// </summary>
-    public void HideIncorrectUI()
-    {
-        m_incorrectUI.Hide();
+        m_fadeUI.StartFade(fadeTime, waitBetweenFade);
     }
 
     /// <summary>
@@ -157,56 +117,66 @@ public class UIManager : MonoBehaviour
         m_correctUI.gameObject.SetActive(false);
         m_incorrectUI.gameObject.SetActive(false);
     }
-
+    
     /// <summary>
-    /// 引数で渡されたUIの表示が終わったかを取得
+    /// Typeに応じたUIを表示
     /// </summary>
-    /// <param name="type"></param>
-    /// <returns></returns>
-    public bool GetIsShowClear(UIType type)
+    /// <param name="Type">表示したいUI</param>
+    public void ShowUI(UIType Type)
     {
-        switch (type)
+        switch (Type)
         {
             case UIType.HUD:
-                return m_hud.IsShowClear();
+                m_hud.Show();
+                break;
             case UIType.Timer:
-                return m_timer.IsShowClear();
+                m_timer.Show();
+                break;
             case UIType.StartUI:
-                return m_startUI.IsShowClear();
+                m_startUI.Show();
+                break;
             case UIType.QuizUI:
-                return m_quizUI.IsShowClear();
+                m_quizUI.Show();
+                break;
             case UIType.CorrectUI:
-                return m_correctUI.IsShowClear();
+                m_correctUI.Show();
+                break;
             case UIType.IncorrectUI:
-                return m_incorrectUI.IsShowClear();
+                m_incorrectUI.Show();
+                break;
             default:
-                return false;
+                break;
         }
     }
 
     /// <summary>
-    /// 引数で渡されたUIの非表示が終わったかを取得
+    /// Typeに応じたUIを非表示
     /// </summary>
-    /// <param name="type"></param>
-    /// <returns></returns>
-    public bool GetIsHideClear(UIType type)
+    /// <param name="Type">非表示にしたいUI</param>
+    public void HideUI(UIType Type)
     {
-        switch (type)
+        switch (Type)
         {
             case UIType.HUD:
-                return m_hud.IsHideClear();
+                m_hud.Hide();
+                break;
             case UIType.Timer:
-                return m_timer.IsHideClear();
+                m_timer.Hide();
+                break;
             case UIType.StartUI:
-                return m_startUI.IsHideClear();
+                m_startUI.Hide();
+                break;
             case UIType.QuizUI:
-                return m_quizUI.IsHideClear();
+                m_quizUI.Hide();
+                break;
             case UIType.CorrectUI:
-                return m_correctUI.IsHideClear();
+                m_correctUI.Hide();
+                break;
             case UIType.IncorrectUI:
-                return m_incorrectUI.IsHideClear();
+                m_incorrectUI.Hide();
+                break;
             default:
-                return false;
+                break;
         }
     }
 
@@ -231,17 +201,78 @@ public class UIManager : MonoBehaviour
     }
 
     /// <summary>
-    /// マネージャーとゲームの設定を設定
+    /// 全てのUIのイベントを初期化
     /// </summary>
-    /// <param name="Manager"></param>
-    /// <param name="Setting"></param>
-    public void SetManagers(GameManager Manager, GameSetting Setting)
+    public void InitializeEvent()
     {
-        m_gameManager = Manager;
-        m_gameSetting = Setting;
+        m_hud.RegistrationEvent();
+        m_timer.RegistrationEvent();
+        m_startUI.RegistrationEvent();
+        m_quizUI.RegistrationEvent();
+        m_correctUI.RegistrationEvent();
+        m_incorrectUI.RegistrationEvent();
+    }
 
-        //設定が必要なUIにも設定
-        m_hud.SetGameSetting(m_gameManager, m_gameSetting);
-        m_startUI.SetGameSetting(m_gameSetting);
+    /// <summary>
+    /// 表示が完了したUIの表示完了通知
+    /// </summary>
+    /// <param name="UI"></param>
+    public void NotifyShowComplete(UIBase UI)
+    {
+        OnUIShowComplete?.Invoke(UI.GetUIType());
+    }
+
+    /// <summary>
+    /// 非表示が完了したUIの非表示完了通知
+    /// </summary>
+    /// <param name="UI"></param>
+    public void NotifyHideComplete(UIBase UI)
+    {
+        OnUIHideComplete?.Invoke(UI.GetUIType());
+    }
+
+    /// <summary>
+    /// HUDの現在の難易度を設定
+    /// </summary>
+    /// <param name="difficulty"></param>
+    public void UpdateDifficulty(float difficulty)
+    {
+        m_hud.SetCurrentDifficulty(difficulty);
+    }
+
+    /// <summary>
+    /// HUDの現在の問題数を設定
+    /// </summary>
+    /// <param name="QuizNumber"></param>
+    public void UpdateQuizNumber(int QuizNumber)
+    {
+        m_hud.SetCurrentQuizNumber(QuizNumber);
+    }
+
+    /// <summary>
+    /// HUDの現在の残機を設定
+    /// </summary>
+    /// <param name="life"></param>
+    public void UpdateLife(int life)
+    {
+        m_hud.SetCurrentLife(life);
+    }
+
+    /// <summary>
+    /// Timerの現在の残り時間を設定
+    /// </summary>
+    /// <param name="Time"></param>
+    public void UpdateTime(float Time)
+    {
+        m_timer.SetTime(Time);
+    }
+
+    /// <summary>
+    /// QuizUIの内容を設定
+    /// </summary>
+    /// <param name="quiz"></param>
+    public void OnQuizChanged(Quiz quiz)
+    {
+        m_quizUI.SetQuiz(quiz);
     }
 }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using Game.Enum;
 
 public class IncorrectUI : UIBase
 {
@@ -10,6 +11,7 @@ public class IncorrectUI : UIBase
 
     [Header("アニメーション設定")]
     [SerializeField] private float m_animDuration = 0.3f;
+    [SerializeField] private float m_autoHideDelay = 1f;
 
     private Coroutine m_animCoroutine;
 
@@ -28,6 +30,12 @@ public class IncorrectUI : UIBase
         m_textCG = m_text.GetComponent<CanvasGroup>();
         if (m_textCG == null) m_textCG = m_text.gameObject.AddComponent<CanvasGroup>();
 
+        Type = UIType.IncorrectUI;
+    }
+
+    public override void RegistrationEvent()
+    {
+        //表示/非表示イベントを追加
         ShowEvent += PlayIncorrectIn;
         HideEvent += PlayIncorrectOut;
     }
@@ -91,6 +99,8 @@ public class IncorrectUI : UIBase
         m_text.rectTransform.localScale = Vector3.one;
 
         ShowClear();
+
+        m_animCoroutine = StartCoroutine(AutoHideCoroutine());
     }
 
     /// <summary>
@@ -135,5 +145,18 @@ public class IncorrectUI : UIBase
         root.SetActive(false);
 
         HideClear();
+    }
+
+    /// <summary>
+    /// 数秒待ってから自動的に非表示
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator AutoHideCoroutine()
+    {
+        //数秒待つ
+        yield return new WaitForSeconds(m_autoHideDelay);
+
+        //非表示開始
+        Hide();
     }
 }

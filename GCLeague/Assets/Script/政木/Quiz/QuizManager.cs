@@ -6,6 +6,9 @@ public class QuizManager : MonoBehaviour
     [Header("使用するクイズデータベース")]
     [SerializeField] private QuizDatabase m_quizDatabase; //通常クイズと穴吹クイズを切り替えるならここを変える
 
+    //QuizDatabaseの保持するリストと同じ順序で保持されているQuizRuntimeのリスト
+    private List<QuizRuntime> m_allQuizRuntimes = new();
+
     //難易度ごとのクイズリスト
     private Dictionary<int, List<QuizRuntime>> m_quizByDifficulty = new();
 
@@ -17,16 +20,37 @@ public class QuizManager : MonoBehaviour
             return;
         }
 
-        //データベースからランタイム用リストを生成
-        foreach (var quiz in m_quizDatabase.Quizzes)
-        {
-            //クイズの難易度に合ったリストが無ければ、リストを作成
-            if (!m_quizByDifficulty.ContainsKey(quiz.Difficulty))
-                m_quizByDifficulty[quiz.Difficulty] = new List<QuizRuntime>();
+        m_allQuizRuntimes.Clear();
+        m_quizByDifficulty.Clear();
 
-            //難易度ごとに分けられたリストに、ランタイム用クイズを追加
-            m_quizByDifficulty[quiz.Difficulty].Add(new QuizRuntime(quiz));
+        //データベースからランタイム用リストを生成
+        for (int i = 0; i < m_quizDatabase.Quizzes.Count; i++)
+        {
+            Quiz quiz = m_quizDatabase.Quizzes[i];
+
+            if (!m_quizByDifficulty.ContainsKey(quiz.Difficulty))
+            {
+                m_quizByDifficulty[quiz.Difficulty] = new List<QuizRuntime>();
+            }
+
+            //動的管理クイズを生成、各リストに追加
+            QuizRuntime quizRuntime = new QuizRuntime(quiz, i);
+            m_allQuizRuntimes.Add(quizRuntime);
+            m_quizByDifficulty[quiz.Difficulty].Add(quizRuntime);
         }
+    }
+
+    /// <summary>
+    /// 指定したIDのQuizRuntimeを取得
+    /// </summary>
+    /// <param name="quizId"></param>
+    /// <returns></returns>
+    public QuizRuntime GetQuizRuntime(int quizId)
+    {
+        if (quizId < 0 || quizId >= m_allQuizRuntimes.Count)
+            return null;
+
+        return m_allQuizRuntimes[quizId];
     }
 
     /// <summary>
@@ -34,30 +58,27 @@ public class QuizManager : MonoBehaviour
     /// </summary>
     /// <param name="difficulty">難易度</param>
     /// <returns>指定した難易度のクイズ</returns>
-    public QuizRuntime GetRandomQuiz(int difficulty)
+    public int GetRandomQuiz(int difficulty)
     {
-        //指定の難易度の問題が無かった場合、nullを返却
         if (!m_quizByDifficulty.ContainsKey(difficulty))
         {
             Debug.LogWarning($"難易度 {difficulty} のクイズが見つかりません。");
-            return null;
+            return -1;
         }
 
-        //指定の難易度のリストから、未出題のクイズを検索
         var list = m_quizByDifficulty[difficulty];
         var unused = list.FindAll(q => !q.IsUsed);
 
-        //出題できるクイズが無かった場合、nullを返却
         if (unused.Count == 0)
         {
             Debug.Log($"難易度 {difficulty} のクイズは全て出題済みです。");
-            return null;
+            return -1;
         }
 
-        //検索したクイズの中からランダムに問題を抽出し、出題済みに設定して返却
         var selected = unused[Random.Range(0, unused.Count)];
         selected.IsUsed = true;
-        return selected;
+
+        return selected.QuizID;
     }
 
     /// <summary>
