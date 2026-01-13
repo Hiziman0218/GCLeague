@@ -1694,7 +1694,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94087460ce67d7b4aa0ce4c471131225, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_NetWorkIP: localhost
+  m_NetWorkIP: ' 192.168.1.235'
   m_NetworkManager: {fileID: 0}
   m_KCP: {fileID: 0}
   m_LogInWindow: {fileID: 1768253782}
@@ -1725,7 +1725,7 @@ MonoBehaviour:
   onlineScene: "Assets/Scenes/\u653F\u6728/GameScene.unity"
   offlineSceneLoadDelay: 0
   transport: {fileID: 321483383}
-  networkAddress: localhost
+  networkAddress: ' 192.168.1.235'
   maxConnections: 100
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
@@ -3268,7 +3268,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1629215683}
   m_HandleRect: {fileID: 1629215682}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
