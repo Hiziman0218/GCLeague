@@ -208,7 +208,7 @@ public class MirrorNewLoginSystem : MonoBehaviour
 
             //新規クライアントログイン
             //m_NetworkManager.StartClient();
-            NetworkManager.singleton.StartHost();
+            NetworkManager.singleton.StartClient();
             //↑をStartClient()からStartHost()に変更、必ず直す
 
             //メッセージウィンドゥを表示状態に
