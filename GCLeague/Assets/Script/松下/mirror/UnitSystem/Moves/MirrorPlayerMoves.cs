@@ -2,6 +2,7 @@ using UnityEngine;
 //Mirrorを使用可能とする
 using Mirror;
 using UnityEngine.UIElements;
+using System.Collections;
 
 /// <summary>
 /// 簡単なMirror移動処理方法
@@ -61,6 +62,9 @@ public class MirrorPlayerMoves : NetworkBehaviour
     [Header("[Shadow]入力情報"), SerializeField, SyncVar]
     private Vector3 m_NewDirection;
 
+    [Header("外部制御")]
+    [SyncVar] public bool AllowMove = true;
+
 
 
     void Start()
@@ -85,11 +89,14 @@ public class MirrorPlayerMoves : NetworkBehaviour
         //クライアント/プレイヤーである場合、プレイヤー入力を許可
         if (isLocalPlayer)
         {
+            if (!AllowMove) return;
             PlayerMove();
         }
     }
     private void LateUpdate()
     {
+        if (!AllowMove) return;
+
         //クライアント/プレイヤーである場合、プレイヤー入力を許可
         if (isLocalPlayer)
         {
@@ -155,20 +162,22 @@ public class MirrorPlayerMoves : NetworkBehaviour
             Quaternion N_Rotation,  //プレイヤーの向き
             Vector3 N_InputVector)  //キー入力
     {
+        //if (!AllowMove) return;
+
         //isLocalPlayer=プレイヤーの本体
         //!isLocalPlayer=プレイヤーではない
-        if (!isLocalPlayer)
-        {
-            //座標更新
-            m_NewPosition = N_Position;
-            //向き更新
-            m_NewRotation = N_Rotation;
+        //if (!isLocalPlayer)
+        //{
+        //座標更新
+        m_NewPosition = N_Position;
+        //向き更新
+        m_NewRotation = N_Rotation;
 
-            m_NewDirection = N_InputVector;
+        m_NewDirection = N_InputVector;
 
-            // 他のクライアントに通知
-            //ShadowMove(N_Position, N_Rotation,N_InputVector);
-        }
+        // 他のクライアントに通知
+        //ShadowMove(N_Position, N_Rotation,N_InputVector);
+        //}
 
         //プレイヤーの向きを再設定する
         //PlayerRotation(direction, CameraForward, CameraRight);
@@ -195,8 +204,6 @@ public class MirrorPlayerMoves : NetworkBehaviour
         //移動アニメーション処理
         MoveAnimator(direction);
         */
-
-
     }
 
     /*
@@ -249,23 +256,19 @@ public class MirrorPlayerMoves : NetworkBehaviour
 
             // もし移動入力があれば力を加える
             if (DesiredDirection.magnitude > 0)
-                m_Rigidbody.AddForce(DesiredDirection * m_MoveSpeed);
-
-            // 現在の速度を確認し、最大速度を超えないようにする
-            // 現在の平面速度（Y軸を除いた速度）を計算
-            Vector3 flatVelocity = new Vector3(m_Rigidbody.velocity.x, 0, m_Rigidbody.velocity.z);
-
-            // 最大速度を超えている場合、速度を制限
-            if (flatVelocity.magnitude > m_MaxSpeed)
             {
-                // 制限された速度ベクトルを適用
-                Vector3 limitedVelocity = flatVelocity.normalized * m_MaxSpeed;
-                m_Rigidbody.velocity = new Vector3(limitedVelocity.x, m_Rigidbody.velocity.y, limitedVelocity.z);
+                transform.rotation = Quaternion.Slerp(
+                    transform.rotation,
+                    Quaternion.LookRotation(DesiredDirection),
+                    Time.deltaTime * 10f
+                );
+
+                Vector3 move = DesiredDirection.normalized * m_MoveSpeed * Time.deltaTime;
+                transform.position += move;
+
+                N_Position = transform.position;
+                N_Rotation = transform.rotation;
             }
-            //最終位置
-            N_Position = this.transform.position;
-            //最終向き
-            N_Rotation = this.transform.rotation;
         }
         //移動アニメーション処理
         MoveAnimator(direction);
@@ -293,5 +296,31 @@ public class MirrorPlayerMoves : NetworkBehaviour
         }
         //サーバー側のアニメーションを変更
         //m_Animator.SetFloat("Speed", m_AnimeMoveSpeed);
+    }
+
+    [Server]
+    public void ServerTeleport(Vector3 position)
+    {
+        // 入力・補間を止める
+        AllowMove = false;
+
+        // Rigidbodyを安全にワープ
+        m_Rigidbody.velocity = Vector3.zero;
+        m_Rigidbody.angularVelocity = Vector3.zero;
+        m_Rigidbody.position = position;
+
+        // NetworkTransform用の同期変数も更新
+        m_NewPosition = position;
+        m_NewRotation = transform.rotation;
+
+        // 1フレーム後に移動再開
+        StartCoroutine(EnableMoveNextFrame());
+    }
+
+    [Server]
+    private IEnumerator EnableMoveNextFrame()
+    {
+        yield return null; // 1フレーム待つ
+        AllowMove = true;
     }
 }

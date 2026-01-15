@@ -1,11 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Game.Enum;
 
 public class GameSettingUI : MonoBehaviour
 {
     [Header("UI")]
-    [SerializeField] private Dropdown m_quizTypeDropdown;
     [SerializeField] private Slider m_difficultySlider;
     [SerializeField] private Slider m_quizNumberSlider;
     [SerializeField] private Slider m_lifeSlider;
@@ -17,25 +15,21 @@ public class GameSettingUI : MonoBehaviour
     [SerializeField] private Text m_lifeText;
     [SerializeField] private Text m_timerText;
 
-    private GameSetting m_gameSetting;
+    private int m_settingDifficulty;    //ゲーム設定における問題の難易度
+    private int m_settingQuizNumber;    //ゲーム設定における総問題数
+    private int m_settingLife;          //ゲーム設定における残機
+    private float m_settingTimer;       //ゲーム設定における一回の回答における制限時間
 
     private bool m_isInitializing = false;
 
     private void Start()
     {
-        //クイズタイプ
-        m_quizTypeDropdown.onValueChanged.AddListener(val =>
-        {
-            if (m_isInitializing) return;
-            m_gameSetting.SetQuizType((QuizType)val);
-        });
-
         //難易度
         m_difficultySlider.onValueChanged.AddListener(val =>
         {
             if (m_isInitializing) return;
             int difficulty = (int)val;
-            m_gameSetting.SetDifficulty(difficulty);
+            GameManager.Instance.CmdSetSettingDifficulty(difficulty);
             m_difficultyText.text = difficulty.ToString();
         });
 
@@ -48,7 +42,7 @@ public class GameSettingUI : MonoBehaviour
             //スライダー側も snap 後の値に更新
             m_quizNumberSlider.SetValueWithoutNotify(snapped);
 
-            m_gameSetting.SetQuizNumber(snapped);
+            GameManager.Instance.CmdSetSettingQuizNumber(snapped);
             m_quizNumberText.text = snapped.ToString();
         });
 
@@ -57,7 +51,7 @@ public class GameSettingUI : MonoBehaviour
         {
             if (m_isInitializing) return;
             int life = (int)val;
-            m_gameSetting.SetLife(life);
+            GameManager.Instance.CmdSetSettingLife(life);
             m_lifeText.text = life.ToString();
         });
 
@@ -70,7 +64,7 @@ public class GameSettingUI : MonoBehaviour
             //スライダー側も snap 後の値に更新
             m_timerSlider.SetValueWithoutNotify(snapped);
 
-            m_gameSetting.SetTimer(snapped);
+            GameManager.Instance.CmdSetSettingTimer(snapped);
             m_timerText.text = snapped.ToString("0");
         });
 
@@ -84,27 +78,31 @@ public class GameSettingUI : MonoBehaviour
     {
         m_isInitializing = true;
 
-        m_quizTypeDropdown.value = (int)m_gameSetting.GetQuizType();
+        m_difficultySlider.SetValueWithoutNotify(GameManager.Instance.GetSettingDifficulty());
+        m_quizNumberSlider.SetValueWithoutNotify(GameManager.Instance.GetSettingQuizNumber());
+        m_lifeSlider.SetValueWithoutNotify(GameManager.Instance.GetSettingLife());
+        m_timerSlider.SetValueWithoutNotify(GameManager.Instance.GetSettingTimer());
 
-        m_difficultySlider.SetValueWithoutNotify(m_gameSetting.GetDifficulty());
-        m_quizNumberSlider.SetValueWithoutNotify(m_gameSetting.GetQuizNumber());
-        m_lifeSlider.SetValueWithoutNotify(m_gameSetting.GetLife());
-        m_timerSlider.SetValueWithoutNotify(m_gameSetting.GetTimer());
-
-        m_difficultyText.text = m_gameSetting.GetDifficulty().ToString();
-        m_quizNumberText.text = m_gameSetting.GetQuizNumber().ToString();
-        m_lifeText.text = m_gameSetting.GetLife().ToString();
-        m_timerText.text = m_gameSetting.GetTimer().ToString("0");
+        m_difficultyText.text = GameManager.Instance.GetSettingDifficulty().ToString();
+        m_quizNumberText.text = GameManager.Instance.GetSettingQuizNumber().ToString();
+        m_lifeText.text = GameManager.Instance.GetSettingLife().ToString();
+        m_timerText.text = GameManager.Instance.GetSettingTimer().ToString("0");
 
         m_isInitializing = false;
     }
 
     /// <summary>
-    /// ゲームの設定を設定
+    /// ゲーム内容設定を設定
     /// </summary>
-    /// <param name="GameSetting"></param>
-    public void SetGameSetting(GameSetting GameSetting)
+    /// <param name="DifficultySetting"></param>
+    /// <param name="QuizNumberSetting"></param>
+    /// <param name="LifeSetting"></param>
+    /// <param name="TimerSetting"></param>
+    public void SetGameSetting(int DifficultySetting, int QuizNumberSetting, int LifeSetting, float TimerSetting)
     {
-        m_gameSetting = GameSetting;
+        m_settingDifficulty = DifficultySetting;
+        m_settingQuizNumber = QuizNumberSetting;
+        m_settingLife = LifeSetting;
+        m_settingTimer = TimerSetting;
     }
 }

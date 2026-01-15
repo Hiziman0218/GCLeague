@@ -1,13 +1,11 @@
 using UnityEngine;
 using Game.Enum;
-using System.Collections;
 using Mirror;
-using System.Collections.Generic;
+using System.Linq;
 
 public class GameManager : NetworkBehaviour
 {
     [Header("参照設定")]
-    [SerializeField] private GameSystemManager m_systemManager; //システムマネージャー
     [SerializeField] private QuizManager m_quizManager; //クイズマネージャー
     [SerializeField] private QuizChecker m_quizChecker; //回答受け取り用
 
@@ -21,17 +19,24 @@ public class GameManager : NetworkBehaviour
     //GameManagerのインスタンス(シングルトン)
     public static GameManager Instance { get; private set; }
 
-    private GameSetting m_gameSetting = null; //ゲーム開始前に設定される内容
     private int m_difficultyChangeCount = 0;  //難易度を上昇させるためのカウント
-    private int m_quizNumber = 10;      //今回のゲームにおける問題数
+    private int m_quizNumber = 10;      //今回のゲームにおける問題数//SyncVarにする？
     private float m_elapsedTime = 0f;   //経過時間計測用
-    private float m_thinkingTime = 60f; //一回の回答にかけられる時間
+    private float m_thinkingTime = 60f; //一回の回答にかけられる時間//SyncVarにする？
     private float m_fadeTime = 1f;      //フェードにかける時間
-    private float m_waitTime = 1f;      //フェードアウトとインの間で待機する時間
+    private float m_fadeWaitTime = 1f;  //フェードアウトとインの間で待機する時間
+    private float m_waitTime = 3f;      //演出を待つ時間
+    private float m_startUITime = 6f;   //StartUIの表示が終了するまでを待つ時間
+    private float m_quizUIShowTime = 0.5f; //QuizUIの表示を待つ時間
     private bool m_lobbyFlag = false;   //ロビーでの遷移管理用フラグ
+    private bool m_startFlag = false;   //ゲームをスタートしたか
     private bool m_isClearQuiz = false; //問題を正解したか
+    private bool m_isCorrect = false;   //正解時の処理制御用フラグ
+    private bool m_isSubtractionLife = false; //残機を既に減らしたか
     private bool m_isGameStart = false; //ゲームが始まっているか
     private bool m_isGameEnd = false;   //ゲームをクリアしているか
+
+    private GameSettingUI m_settingUI;  //ゲーム内容設定UI
 
     [SyncVar(hook = nameof(OnStateChanged))]
     private GameState m_state = GameState.Lobby; //ゲームの状態
@@ -41,10 +46,18 @@ public class GameManager : NetworkBehaviour
     private int m_currentQuizID = -1;     //クイズのID
     [SyncVar(hook = nameof(OnQuizNumberChanged))]
     private int m_clearCount = 0;       　//クリアした問題数
+    [SyncVar(hook = nameof(OnPlayerCountChanged))]
+    private int m_playerCount;            //参加しているプレイヤーの人数
     [SyncVar(hook = nameof(OnLifeChanged))]
     private int m_life = -1;              //残り残機
     [SyncVar(hook = nameof(OnTimerChanged))]
     private float m_currentTime = 0f;   　//残り回答時間
+
+    [SyncVar] private int m_settingDifficulty = 1;    //ゲーム設定における問題の難易度
+    [SyncVar] private int m_settingQuizNumber = 10;   //ゲーム設定における総問題数
+    [SyncVar] private int m_settingPlayerNumber = 1;  //ゲーム設定におけるプレイヤーの人数
+    [SyncVar] private int m_settingLife = 3;          //ゲーム設定における残機
+    [SyncVar] private float m_settingTimer = 60f;     //ゲーム設定における一回の回答における制限時間
 
     private void Awake()
     {
@@ -55,12 +68,6 @@ public class GameManager : NetworkBehaviour
             return;
         }
         Instance = this;
-
-        //システムマネージャーを取得できていたら、設定を取得
-        if (m_systemManager != null)
-        {
-            m_gameSetting = m_systemManager.GetGameSetting();
-        }
     }
 
     private void Start()
@@ -70,24 +77,15 @@ public class GameManager : NetworkBehaviour
 
     public override void OnStartServer()
     {
-        Debug.Log("OnStartServer関数呼び出し");
-        //ゲームの状態を開始時に初期化
-        m_state = GameState.Lobby;
-        GameEnd();
+        //サーバー起動時に初期化
+        InitializeServerState();
     }
 
-    private void OnEnable()
+    public override void OnStopServer()
     {
-        //通知イベントに設定
-        StartCoroutine(BindUIManager());
-    }
-
-    private void OnDisable()
-    {
-        //通知イベントを解除
-        if (UIManager.Instance == null) return;
-        UIManager.Instance.OnUIShowComplete -= HandleUIShowComplete;
-        UIManager.Instance.OnUIHideComplete -= HandleUIHideComplete;
+        //サーバー終了時にリセット
+        ResetServerState();
+        if (Instance == this) Instance = null;
     }
 
     private void Update()
@@ -95,9 +93,17 @@ public class GameManager : NetworkBehaviour
         if (isServer)
         {
             ServerUpdate();
-            //Debug.Log($"[GameManager] CurrentState = {m_state}");
+            m_playerCount = NetworkServer.connections.Count;
+        }
+
+        if (isServer && NetworkServer.connections.Count == 0)
+        {
+            ResetServerState();
+            m_state = GameState.Lobby;
         }
     }
+
+    /*サーバーによるアップデート*/
 
     /// <summary>
     /// サーバーによる更新処理
@@ -137,9 +143,6 @@ public class GameManager : NetworkBehaviour
             case GameState.GameOver:
                 UpdateGameOver();
                 break;
-            case GameState.WaitFade:
-                UpdateWaitFade();
-                break;
             default:
                 break;
         }
@@ -154,25 +157,45 @@ public class GameManager : NetworkBehaviour
     {
         //経過時間計測用変数を初期化
         m_elapsedTime = 0f;
+        //既に正解処理をしたかフラグを初期化
+        m_isCorrect = false;
+        //既に残機を減らしたかフラグを初期化
+        m_isSubtractionLife = false;
+        //変更先がThinkingなら、制限時間を初期化し、ホストの回答ボタンを表示
+        if (State == GameState.Thinking)
+        {
+            m_currentTime = m_settingTimer;
+            RpcShowFinalAnswerButton();
+        }
+        else if(State == GameState.Judging)
+        {
+            RpcHideFinalAnswerButton();
+        }
+
+        //状態更新
         m_state = State;
-        RpcUIControl(State);
+        //変更された状態に合わせてクライアントでUI管理
+        RpcOnStateChanged(State);
+        //更新された状態確認用ログ
+        Debug.Log($"[GameManager] CurrentState = {m_state}");
     }
 
-    //各状態の更新処理
+    /*各状態の更新処理*/
 
     [Server]
     private void UpdateLobby()
     {
         //フェードによる処理が終了しゲームが開始されるまでの秒数
-        float StartTime = m_fadeTime * 2 + m_waitTime;
+        float StartTime = m_fadeTime * 2 + m_fadeWaitTime;
 
         if (m_lobbyFlag)
         {
             //一定時間後進行
             m_elapsedTime += Time.deltaTime;
 
-            if(m_elapsedTime >= m_fadeTime)
+            if(m_elapsedTime >= m_fadeTime && !m_startFlag)
             {
+                m_startFlag = true;
                 GameStart();
             }
 
@@ -186,7 +209,13 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void UpdateGameStart()
     {
+        //一定時間経過後次の問題へ
+        m_elapsedTime += Time.deltaTime;
 
+        if (m_elapsedTime >= m_startUITime)
+        {
+            ChangeState(GameState.Question);
+        }
     }
 
     [Server]
@@ -196,6 +225,14 @@ public class GameManager : NetworkBehaviour
         if (m_currentQuizID == -1)
         {
             m_currentQuizID = m_quizManager.GetRandomQuiz(m_currentDifficulty);
+        }
+
+        //一定時間経過後次の問題へ
+        m_elapsedTime += Time.deltaTime;
+
+        if (m_elapsedTime >= m_quizUIShowTime)
+        {
+            ChangeState(GameState.Thinking);
         }
     }
 
@@ -215,13 +252,21 @@ public class GameManager : NetworkBehaviour
     [Server]
     private void UpdateJudging()
     {
-
+        JudgeByPosition();
     }
 
     [Server]
     private void UpdateStandby()
     {
-
+        //クイズを正解したか不正解したかで遷移先を変更
+        if (m_isClearQuiz)
+        {
+            ChangeState(GameState.CorrectAnswer);
+        }
+        else
+        {
+            ChangeState(GameState.IncorrectAnswer);
+        }    
     }
 
     [Server]
@@ -230,16 +275,21 @@ public class GameManager : NetworkBehaviour
         //クイズ格納用変数を初期化
         m_currentQuizID = -1;
 
-        //クリアした問題数を加算
-        m_clearCount++;
-        //難易度変更用のカウントを加算
-        m_difficultyChangeCount++;
+        //まだ正解時の処理をしていなければ
+        if (!m_isCorrect)
+        {
+            m_isCorrect = true;
+            //クリアした問題数を加算
+            m_clearCount++;
+            //難易度変更用のカウントを加算
+            m_difficultyChangeCount++;
+        }
 
         //クリアした問題数がこのゲームの問題数と同じなら、ゲームクリアへ移行
         if (m_clearCount == m_quizNumber)
         {
-            ChangeState(GameState.GameClear);
             m_isGameEnd = true;
+            ChangeState(GameState.GameClear);
         }
         //まだゲームが終わっていないなら、難易度を上昇させるかを確認した後、クイズの出題へ移行
         else
@@ -255,7 +305,14 @@ public class GameManager : NetworkBehaviour
                     m_currentDifficulty++;
                 }
             }
-            ChangeState(GameState.Question);
+
+            //一定時間経過後次の問題へ
+            m_elapsedTime += Time.deltaTime;
+
+            if(m_elapsedTime >= m_waitTime)
+            {
+                ChangeState(GameState.Question);
+            }
         }
     }
 
@@ -268,34 +325,58 @@ public class GameManager : NetworkBehaviour
         //ライフが既に0なら、ゲームオーバーへ移行
         if (m_life == 0)
         {
-            ChangeState(GameState.GameOver);
             m_isGameEnd = true;
+            ChangeState(GameState.GameOver);
         }
         //まだ残機が残っているなら、残機を減少させ、クイズの出題へ移行
         else
         {
-            m_life--;
-            ChangeState(GameState.Question);
+            //残機がまだ減っていない場合
+            if (!m_isSubtractionLife)
+            {
+                m_life--;
+                m_isSubtractionLife = true;
+            }
+
+            //一定時間経過後次の問題へ
+            m_elapsedTime += Time.deltaTime;
+
+            if (m_elapsedTime >= m_waitTime)
+            {
+                ChangeState(GameState.Question);
+            }
         }
     }
 
     [Server]
     private void UpdateGameClear()
     {
-        Debug.Log("ゲームクリア");
+        //一定時間後ゲーム終了
+        m_elapsedTime += Time.deltaTime;
+
+        if (m_elapsedTime >= m_fadeTime)
+        {
+            GameEnd();
+        }
+
+        Debug.Log("Game Clear");
     }
 
     [Server]
     private void UpdateGameOver()
     {
-        Debug.Log("ゲームオーバー");
+        //一定時間後ゲーム終了
+        m_elapsedTime += Time.deltaTime;
+
+        if (m_elapsedTime >= m_fadeTime)
+        {
+            GameEnd();
+        }
+
+        Debug.Log("Game Over");
     }
 
-    [Server]
-    private void UpdateWaitFade()
-    {
-
-    }
+    /*ゲーム開始/終了の初期化*/
 
     /// <summary>
     /// ゲーム開始
@@ -305,22 +386,17 @@ public class GameManager : NetworkBehaviour
     {
         //ゲーム用のアクティブ設定
         RpcSetGameObjects(true);
-
         //全てのプレイヤーを初期位置に移動
-        foreach (var player in ServerPlayerCollector.GetAllPlayers())
-        {
-            //ServerMessageTesterにあるSendPlayerWarpAll処理が使える？
-            player.transform.position = Vector3.zero;
-        }
+        TeleportAllPlayers(new Vector3(0f, 0.5f, 0f));
 
         //出題するクイズの難易度を設定
-        m_currentDifficulty = m_gameSetting.GetDifficulty();
+        m_currentDifficulty = m_settingDifficulty;
         //今回のゲームにおける問題数を設定
-        m_quizNumber = m_gameSetting.GetQuizNumber();
+        m_quizNumber = m_settingQuizNumber;
         //残機を設定
-        m_life = m_gameSetting.GetLife();
+        m_life = m_settingLife;
         //一回の回答にかけられる時間を設定
-        m_thinkingTime = m_gameSetting.GetTimer();
+        m_thinkingTime = m_settingTimer;
     }
 
     /// <summary>
@@ -333,12 +409,31 @@ public class GameManager : NetworkBehaviour
         RpcSetGameObjects(false);
 
         //全てのプレイヤーを初期位置に移動
-        foreach (var player in ServerPlayerCollector.GetAllPlayers())
-        {
-            //ServerMessageTesterにあるSendPlayerWarpAll処理が使える？
-            player.transform.position = new Vector3(0f, 0.7f, 0.25f);
-        }
+        TeleportAllPlayers(new Vector3(0f, 0.6f, 1.2f));
 
+        RpcShowStartButton();
+
+        ResetServerState();
+
+        ChangeState(GameState.Lobby);
+    }
+
+    /// <summary>
+    /// サーバー初期化共通処理
+    /// </summary>
+    [Server]
+    private void InitializeServerState()
+    {
+        m_state = GameState.Lobby;
+        ResetServerState();
+    }
+
+    /// <summary>
+    /// サーバーリセット処理
+    /// </summary>
+    [Server]
+    private void ResetServerState()
+    {
         //ゲームに使用する各値を初期化
         m_currentDifficulty = -1;
         m_currentQuizID = -1;
@@ -347,26 +442,80 @@ public class GameManager : NetworkBehaviour
         m_currentTime = 0f;
         m_isGameStart = false;
         m_isGameEnd = false;
+        m_lobbyFlag = false;
+        m_startFlag = false;
 
         //クイズの出題フラグを初期化
-        m_quizManager.ResetUsedFlags();
-        //ロビーのフラグを初期化
-        m_lobbyFlag = false;
+        if (m_quizManager != null)
+        {
+            m_quizManager.ResetUsedFlags();
+        }
+    }
+
+    /*一括移動処理*/
+
+    [Server]
+    public void TeleportAllPlayers(Vector3 pos)
+    {
+        foreach (var playerObj in ServerPlayerCollector.GetAllPlayers())
+        {
+            var move = playerObj.GetComponent<MirrorPlayerMoves>();
+            if (move != null)
+            {
+                move.ServerTeleport(pos);
+            }
+        }
+    }
+
+    /*判定処理*/
+
+    /// <summary>
+    /// プレイヤーのいるエリアによる判定
+    /// </summary>
+    [Server]
+    private void JudgeByPosition()
+    {
+        int left = 0;
+        int right = 0;
+
+        foreach (var player in ServerPlayerCollector.GetAllPlayers())
+        {
+            var area = player.GetComponent<PlayerAnswerArea>();
+            if (area == null) continue;
+
+            if (area.currentArea == AnswerArea.Left) left++;
+            else if (area.currentArea == AnswerArea.Right) right++;
+        }
+
+        int selectedAnswer = left >= right ? 0 : 1;
+
+        var quiz = m_quizManager.GetQuizRuntime(m_currentQuizID);
+        m_isClearQuiz = quiz.IsCorrect(selectedAnswer);
+
+        RpcShowResult(m_isClearQuiz);
+        ChangeState(GameState.Standby);
+    }
+
+    /*Rpcによる演出*/
+
+    /// <summary>
+    /// トロッコ演出
+    /// </summary>
+    /// <param name="isCorrect"></param>
+    [ClientRpc]
+    private void RpcMoveTrolley(bool isCorrect)
+    {
+        //未完成なので形だけ
     }
 
     /// <summary>
-    /// UIManagerに必ずイベントを登録するためのコルーチン
+    /// 変更された状態に合わせた処理
     /// </summary>
-    /// <returns></returns>
-    IEnumerator BindUIManager()
+    /// <param name="state"></param>
+    [ClientRpc]
+    private void RpcOnStateChanged(GameState state)
     {
-        while (UIManager.Instance == null)
-        {
-            yield return null;
-        }
-
-        UIManager.Instance.OnUIShowComplete += HandleUIShowComplete;
-        UIManager.Instance.OnUIHideComplete += HandleUIHideComplete;
+        UIManager.Instance.OnGameStateChanged(state);
     }
 
     /// <summary>
@@ -381,140 +530,58 @@ public class GameManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// プレイヤーのいるエリアによる判定
-    /// </summary>
-    [Server]
-    private void JudgeByPosition()
-    {
-        int leftCount = 0;
-        int rightCount = 0;
-
-        foreach (var player in ServerPlayerCollector.GetAllPlayers())
-        {
-            Vector3 pos = player.transform.position;
-
-            if (m_leftArea.bounds.Contains(pos))
-            {
-                leftCount++;
-            }
-            else if (m_rightArea.bounds.Contains(pos))
-            {
-                rightCount++;
-            }
-        }
-
-        //左が 0、右が 1
-        int selectedAnswer = leftCount >= rightCount ? 0 : 1;
-
-        //IDを元にクイズを取得
-        QuizRuntime quiz = m_quizManager.GetQuizRuntime(m_currentQuizID);
-
-        bool isCorrect = quiz.IsCorrect(selectedAnswer);
-        RpcShowResult(isCorrect);
-        m_isClearQuiz = isCorrect;
-
-        RpcMoveTrolley(m_isClearQuiz);
-        ChangeState(GameState.Standby);
-    }
-
-    /// <summary>
-    /// トロッコ演出
-    /// </summary>
-    /// <param name="isCorrect"></param>
-    [ClientRpc]
-    void RpcMoveTrolley(bool isCorrect)
-    {
-        //できあがってから
-        //trolleyAnimator.Play(isCorrect ? "Forward" : "Fall");
-    }
-
-    /// <summary>
-    /// クライアントでUIを管理
-    /// </summary>
-    [ClientRpc]
-    void RpcUIControl(GameState state)
-    {
-        //UIManagerがまだ生成されていない場合は待つ
-        if (UIManager.Instance == null)
-        {
-            StartCoroutine(WaitForUIManager(state));
-            return;
-        }
-
-        ApplyUI(state);
-    }
-
-    /// <summary>
-    /// UIManagerを経由してUI管理
-    /// </summary>
-    /// <param name="state"></param>
-    void ApplyUI(GameState state)
-    {
-        switch (state)
-        {
-            case GameState.Lobby:
-                UIManager.Instance.HideUI(UIType.HUD);
-                UIManager.Instance.Initialize();
-                //ゲームクリア非表示
-                //ゲームオーバー非表示
-                break;
-            case GameState.GameStart:
-                UIManager.Instance.ShowUI(UIType.StartUI);
-                break;
-            case GameState.Question:
-                UIManager.Instance.ShowUI(UIType.HUD);
-                UIManager.Instance.ShowUI(UIType.QuizUI);
-                break;
-            case GameState.Thinking:
-                UIManager.Instance.ShowUI(UIType.Timer);
-                break;
-            case GameState.Judging:
-                UIManager.Instance.HideUI(UIType.Timer);
-                break;
-            case GameState.Standby:
-                break;
-            case GameState.CorrectAnswer:
-                break;
-            case GameState.IncorrectAnswer:
-                break;
-            case GameState.GameClear:
-                //ゲームクリア表示
-                break;
-            case GameState.GameOver:
-                //ゲームオーバー表示
-                break;
-            case GameState.WaitFade:
-                break;
-            default:
-                break;
-        }
-    }
-
-    /// <summary>
-    /// UIManagerが生成されていない場合の対策コルーチン
-    /// </summary>
-    /// <param name="state"></param>
-    /// <returns></returns>
-    IEnumerator WaitForUIManager(GameState state)
-    {
-        // UIManager が生成されるまで待つ
-        while (UIManager.Instance == null)
-        {
-            yield return null;
-        }
-
-        ApplyUI(state);
-    }
-
-    /// <summary>
     /// クライアントで正解/不正解のUI表示
     /// </summary>
     /// <param name="isCorrect"></param>
     [ClientRpc]
-    void RpcShowResult(bool isCorrect)
+    private void RpcShowResult(bool isCorrect)
     {
-        UIManager.Instance.ShowResult(isCorrect);
+        UIManager.Instance?.ShowResult(isCorrect);
     }
+    
+    /// <summary>
+    /// クライアントで暗転のUI表示
+    /// </summary>
+    [ClientRpc]
+    private void RpcShowFadeUI()
+    {
+        UIManager.Instance?.ShowFade(m_fadeTime, m_fadeWaitTime);
+    }
+
+    /// <summary>
+    /// クライアントでホストのみスタートボタン表示
+    /// </summary>
+    [ClientRpc]
+    private void RpcShowStartButton()
+    {
+        var host = FindObjectsOfType<HostControll>()
+        .FirstOrDefault(h => h.isLocalPlayer && h.isHostPlayer);
+        host?.OnGameEnd();
+    }
+
+    /// <summary>
+    /// クライアントでホストのみ回答完了ボタン表示
+    /// </summary>
+    [ClientRpc]
+    private void RpcShowFinalAnswerButton()
+    {
+        var host = FindObjectsOfType<HostControll>()
+        .FirstOrDefault(h => h.isLocalPlayer && h.isHostPlayer);
+        host?.OnThinkingStart();
+    }
+
+    /// <summary>
+    /// クライアントでホストのみ回答完了ボタン非表示
+    /// </summary>
+    [ClientRpc]
+    private void RpcHideFinalAnswerButton()
+    {
+        var host = FindObjectsOfType<HostControll>()
+        .FirstOrDefault(h => h.isLocalPlayer && h.isHostPlayer);
+        host?.OnThinkingEnd();
+    }
+
+    /*hook*/
 
     /// <summary>
     /// 状態変更時のUI切り替え
@@ -523,39 +590,7 @@ public class GameManager : NetworkBehaviour
     /// <param name="newState"></param>
     private void OnStateChanged(GameState oldState, GameState newState)
     {
-        UIManager.Instance.OnGameStateChanged(newState);
-
-        switch(newState)
-        {
-            case GameState.Thinking:
-                //ホストを取得し、ホストのロビー用UIを表示
-                if (NetworkServer.localConnection != null)
-                {
-                    var hostConn = NetworkServer.localConnection;
-                    if (hostConn.identity != null)
-                    {
-                        HostControll hostPlayer = hostConn.identity.GetComponent<HostControll>();
-                        hostPlayer.OnThinkingStart();
-                    }
-                }
-                break;
-            case GameState.Judging:
-                //回答判定
-                JudgeByPosition();
-                //ホストを取得し、ホストのロビー用UIを表示
-                if (NetworkServer.localConnection != null)
-                {
-                    var hostConn = NetworkServer.localConnection;
-                    if (hostConn.identity != null)
-                    {
-                        HostControll hostPlayer = hostConn.identity.GetComponent<HostControll>();
-                        hostPlayer.OnThinkingEnd();
-                    }
-                }
-                break;
-            default:
-                break;
-        }
+        
     }
 
     /// <summary>
@@ -565,7 +600,7 @@ public class GameManager : NetworkBehaviour
     /// <param name="newValue"></param>
     private void OnDifficultyChanged(int oldValue, int newValue)
     {
-        UIManager.Instance.UpdateDifficulty(newValue);
+        UIManager.Instance?.UpdateDifficulty(newValue);
     }
 
     /// <summary>
@@ -576,10 +611,7 @@ public class GameManager : NetworkBehaviour
     private void OnQuizIdChanged(int oldValue, int newValue)
     {
         if (newValue < 0) return;
-
-        Quiz quiz = QuizDatabase.Instance.Quizzes[newValue];
-
-        UIManager.Instance.OnQuizChanged(quiz);
+        UIManager.Instance?.OnQuizChanged(QuizDatabase.Instance.Quizzes[newValue]);
     }
 
     /// <summary>
@@ -589,7 +621,17 @@ public class GameManager : NetworkBehaviour
     /// <param name="newValue"></param>
     private void OnQuizNumberChanged(int oldValue, int newValue)
     {
-        UIManager.Instance.UpdateQuizNumber(newValue);
+        UIManager.Instance?.UpdateQuizNumber(newValue);
+    }
+
+    /// <summary>
+    /// プレイヤーの人数の値変更
+    /// </summary>
+    /// <param name="oldValue"></param>
+    /// <param name="newValue"></param>
+    private void OnPlayerCountChanged(int oldValue, int newValue)
+    {
+        UIManager.Instance?.UpdatePlayerCount(newValue);
     }
 
     /// <summary>
@@ -599,7 +641,7 @@ public class GameManager : NetworkBehaviour
     /// <param name="newValue"></param>
     private void OnLifeChanged(int oldValue, int newValue)
     {
-        UIManager.Instance.UpdateLife(newValue);
+        UIManager.Instance?.UpdateLife(newValue);
     }
 
     /// <summary>
@@ -609,133 +651,80 @@ public class GameManager : NetworkBehaviour
     /// <param name="newValue"></param>
     private void OnTimerChanged(float oldValue, float newValue)
     {
-        UIManager.Instance.UpdateTime(newValue);
-
-        if (newValue <= 0f)
-        {
-            //残り回答時間が無くなったら、クイズを非表示
-            UIManager.Instance.HideUI(UIType.QuizUI);
-        }
+        UIManager.Instance?.UpdateTime(newValue);
     }
 
-    /// <summary>
-    /// 表示完了時の処理
-    /// </summary>
-    /// <param name="type"></param>
-    private void HandleUIShowComplete(UIType type)
+    /*UIからサーバーへのリクエスト*/
+
+    [Server]
+    public void ServerStartFromHost()
     {
-        //サーバーでなければ、以降の処理を行わない
-        if (!isServer) return;
-
-        /*受け取ったUIのタイプに合わせた処理を書く*/
-        switch (type)
-        {
-            case UIType.HUD:
-                break;
-            case UIType.Timer:
-                break;
-            case UIType.StartUI:
-                break;
-            case UIType.QuizUI:
-                m_currentTime = m_thinkingTime;
-                ChangeState(GameState.Thinking);
-                break;
-            case UIType.CorrectUI:
-                break;
-            case UIType.IncorrectUI:
-                break;
-            case UIType.GameClearUI:
-                break;
-            case UIType.GameOverUI:
-                break;
-            case UIType.FadeUI:
-                if (m_isGameEnd)
-                {
-                    GameEnd();
-                    ChangeState(GameState.Lobby);
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-    /// <summary>
-    /// 非表示完了時の処理
-    /// </summary>
-    /// <param name="type"></param>
-    private void HandleUIHideComplete(UIType type)
-    {
-        //サーバーでなければ、以降の処理を行わない
-        if (!isServer) return;
-
-        /*受け取ったUIのタイプに合わせた処理を書く*/
-        switch (type)
-        {
-            case UIType.HUD:
-                break;
-            case UIType.Timer:
-                break;
-            case UIType.StartUI:
-                ChangeState(GameState.Question);
-                break;
-            case UIType.QuizUI:
-                break;
-            case UIType.CorrectUI:
-                ChangeState(GameState.CorrectAnswer);
-                break;
-            case UIType.IncorrectUI:
-                ChangeState(GameState.IncorrectAnswer);
-                break;
-            case UIType.GameClearUI:
-                break;
-            case UIType.GameOverUI:
-                break;
-            case UIType.FadeUI:    
-                break;
-            default:
-                break;
-        }
-    }
-
-    /// <summary>
-    /// ゲームの設定を取得
-    /// </summary>
-    /// <returns></returns>
-    public GameSetting GetGameSetting()
-    {
-        return m_gameSetting;
-    }
-
-    /// <summary>
-    /// スタートボタンを押したときの処理
-    /// </summary>
-    public void PushStartButton()
-    {
-        //m_systemManager.ChangeScene(m_fadeTime, m_waitTime);
-        UIManager.Instance.ShowFade(m_fadeTime, m_waitTime);
+        //クライアントへ Fade 指示
+        RpcShowFadeUI();
         m_lobbyFlag = true;
         m_isGameStart = true;
-        /*
-        if (!isLocalPlayer) return;
-        CmdPushStartButton();*/
     }
 
-    [Command]
-    void CmdPushStartButton()
+    [Server]
+    public void ServerRequestJudge()
     {
-        //m_systemManager.ChangeScene(m_fadeTime, m_waitTime);
-        UIManager.Instance.ShowFade(m_fadeTime, m_waitTime);
-        m_lobbyFlag = true;
+        ChangeState(GameState.Judging);
     }
+
+    /*その他 ゲッターセッターなど*/
 
     /// <summary>
-    /// 回答終了ボタンを押したときの処理
+    /// 受け取ったゲーム設定パネルにゲーム設定を設定
     /// </summary>
-    public void AnswerCompleted()
+    /// <param name="gameSettingUI"></param>
+    public void SetGameSettingUI(GameSettingUI gameSettingUI)
     {
-        //強制的に回答終了
-        ChangeState(GameState.Judging);
-        UIManager.Instance.HideUI(UIType.QuizUI);
+        m_settingUI = gameSettingUI;
+        if (m_settingUI != null) m_settingUI.SetGameSetting(m_settingDifficulty, 
+            m_settingQuizNumber, m_settingLife, m_settingTimer);
+    }
+
+    public int GetSettingDifficulty()
+    {
+        return m_settingDifficulty;
+    }
+
+    public int GetSettingQuizNumber()
+    {
+        return m_settingQuizNumber;
+    }
+
+    public int GetSettingLife()
+    {
+        return m_settingLife;
+    }
+
+    public float GetSettingTimer()
+    {
+        return m_settingTimer;
+    }
+
+    [Command(requiresAuthority = false)]
+    public void CmdSetSettingDifficulty(int difficulty)
+    {
+        m_settingDifficulty = difficulty;
+    }
+
+    [Command(requiresAuthority = false)]
+    public void CmdSetSettingQuizNumber(int quizNumber)
+    {
+        m_settingQuizNumber = quizNumber;
+    }
+
+    [Command(requiresAuthority = false)]
+    public void CmdSetSettingLife(int life)
+    {
+        m_settingLife = life;
+    }
+
+    [Command(requiresAuthority = false)]
+    public void CmdSetSettingTimer(float timer)
+    {
+        m_settingTimer = timer;
     }
 }

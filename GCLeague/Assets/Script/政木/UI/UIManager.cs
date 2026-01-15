@@ -7,8 +7,6 @@ public class UIManager : MonoBehaviour
     //UIManagerのインスタンス(シングルトン)
     public static UIManager Instance { get; private set; }
 
-    private GameSetting m_gameSetting; //ゲームの設定保持用
-
     private List<UIBase> m_UIList = new List<UIBase>();
 
     //表示/非表示が完了した時に呼ばれる通知用イベント
@@ -53,16 +51,22 @@ public class UIManager : MonoBehaviour
         switch (state)
         {
             case GameState.Lobby:
+                HideAll();
+                Initialize();
                 break;
             case GameState.GameStart:
-                GameManager gameManager = FindObjectOfType<GameManager>();
-                m_gameSetting = gameManager.GetGameSetting();
-                m_hud.SetGameSetting(m_gameSetting);
-                m_startUI.SetGameSetting(m_gameSetting);
+                ShowUI(UIType.StartUI);
                 break;
             case GameState.Question:
+                ShowUI(UIType.HUD);
+                ShowUI(UIType.QuizUI);
                 break;
             case GameState.Thinking:
+                ShowUI(UIType.Timer);
+                break;
+            case GameState.Judging:
+                HideUI(UIType.Timer);
+                HideUI(UIType.QuizUI);
                 break;
             case GameState.Standby:
                 break;
@@ -235,7 +239,7 @@ public class UIManager : MonoBehaviour
     /// HUDの現在の難易度を設定
     /// </summary>
     /// <param name="difficulty"></param>
-    public void UpdateDifficulty(float difficulty)
+    public void UpdateDifficulty(int difficulty)
     {
         m_hud.SetCurrentDifficulty(difficulty);
     }
@@ -247,6 +251,16 @@ public class UIManager : MonoBehaviour
     public void UpdateQuizNumber(int QuizNumber)
     {
         m_hud.SetCurrentQuizNumber(QuizNumber);
+    }
+
+    /// <summary>
+    /// HUDとStartUIのプレイヤーの人数を設定
+    /// </summary>
+    /// <param name="PlayerCount"></param>
+    public void UpdatePlayerCount(int PlayerCount)
+    {
+        m_hud.SetPlayerCount(PlayerCount);
+        m_startUI.SetPlayerCount(PlayerCount);
     }
 
     /// <summary>

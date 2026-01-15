@@ -8,33 +8,33 @@ public class HostControll : NetworkBehaviour
     [SerializeField] private GameSettingUI m_gameSettingPannel;
     [SerializeField] private GameObject m_FinalAnswerButton;
 
-    [SyncVar]
+    [SyncVar(hook = nameof(OnHostChanged))]
     public bool isHostPlayer;
-
-    public override void OnStartLocalPlayer()
-    {
-        /*
-        //自身がホストなら、ホスト専用UIを表示し、ゲーム設定用UIを連携
-        if (isServer)
-        {
-            m_lobbyUI.SetActive(true);
-            StartCoroutine(BindGameSystemManager());
-        }*/
-
-        if (isHostPlayer)
-        {
-            // 最初に入ったプレイヤーだけ
-            StartCoroutine(BindGameSystemManager());
-        }
-    }
 
     public override void OnStartServer()
     {
-        // 接続順で一番最初ならホスト
+        //接続順で一番最初ならホスト
         if (NetworkServer.connections.Count == 1)
         {
             isHostPlayer = true;
         }
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        if (isHostPlayer)
+        {
+            //最初に入ったプレイヤーだけ
+            StartCoroutine(BindGameManager());
+        }
+    }
+
+    public override void OnStopServer()
+    {
+        //自分がホストじゃなければ何もしない
+        if (!isHostPlayer) return;
+
+        AssignNextHost();
     }
 
     /// <summary>
@@ -87,8 +87,13 @@ public class HostControll : NetworkBehaviour
     [Command]
     private void CmdRequestStartGame()
     {
-        //サーバー側で実行される
-        GameManager.Instance.PushStartButton();
+        // ここはサーバー上で実行されるので、サーバー側の GameManager のサーバーメソッドを直接呼ぶ
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("GameManager.Instance is null on server in CmdRequestStartGame");
+            return;
+        }
+        GameManager.Instance.ServerStartFromHost();
     }
 
     /// <summary>
@@ -97,21 +102,60 @@ public class HostControll : NetworkBehaviour
     [Command]
     private void CmdRequestChangeStateJudging()
     {
-        GameManager.Instance.AnswerCompleted();
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("GameManager.Instance is null on server in CmdRequestChangeStateJudging");
+            return;
+        }
+        GameManager.Instance.ServerRequestJudge();
     }
 
     /// <summary>
     /// GameSystemManagerに必ずUIを登録するためのコルーチン
     /// </summary>
     /// <returns></returns>
-    IEnumerator BindGameSystemManager()
+    IEnumerator BindGameManager()
     {
-        while (GameSystemManager.Instance == null)
+        while (GameManager.Instance == null)
         {
             yield return null;
         }
 
-        GameSystemManager.Instance.SetGameSetting(m_gameSettingPannel);
+        GameManager.Instance.SetGameSettingUI(m_gameSettingPannel);
         OnGameEnd();
+    }
+
+    /// <summary>
+    /// ホストが切り替わった時の処理
+    /// </summary>
+    /// <param name="oldValue"></param>
+    /// <param name="newValue"></param>
+    void OnHostChanged(bool oldValue, bool newValue)
+    {
+        // ローカルプレイヤーかつホストになった瞬間
+        if (!isLocalPlayer) return;
+
+        if (newValue)
+        {
+            Debug.Log("I am new host");
+            StartCoroutine(BindGameManager());
+        }
+    }
+
+    [Server]
+    void AssignNextHost()
+    {
+        foreach (var conn in NetworkServer.connections.Values)
+        {
+            if (conn.identity == null) continue;
+
+            HostControll nextHost = conn.identity.GetComponent<HostControll>();
+            if (nextHost != null)
+            {
+                nextHost.isHostPlayer = true;
+                Debug.Log($"New host assigned: netId={nextHost.netId}");
+                break;
+            }
+        }
     }
 }

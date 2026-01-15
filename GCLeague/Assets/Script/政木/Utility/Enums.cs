@@ -36,4 +36,11 @@ namespace Game.Enum
         GameOverUI,  //ゲームオーバー時に表示されるUI
         FadeUI,      //フェードに使用するUI
     }
+
+    public enum AnswerArea
+    {
+        None,
+        Left,
+        Right
+    }
 }

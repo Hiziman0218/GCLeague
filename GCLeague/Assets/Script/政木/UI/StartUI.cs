@@ -6,8 +6,6 @@ using Game.Enum;
 public class StartUI : UIBase
 {
     [Header("UI")]
-    [Tooltip("クイズ形式")]
-    [SerializeField] Text m_quizType;
     [Tooltip("最初の難易度")]
     [SerializeField] Text m_difficulty;
     [Tooltip("クイズの総問題数")]
@@ -23,7 +21,8 @@ public class StartUI : UIBase
     [SerializeField] private float m_expansionDuration = 0.3f; //拡大アニメーション時間
     [SerializeField] private float m_autoHideDelay = 5f; //表示している期間
 
-    private GameSetting m_gameSetting; //ゲームの設定保持用
+    private int m_currentPlayerCount = 0;
+
     private Coroutine m_animCoroutine; //コルーチン管理用
 
     private void Awake()
@@ -49,30 +48,11 @@ public class StartUI : UIBase
 
     public void UpdateStartUI()
     {
-        switch (m_gameSetting.GetQuizType())
-        {
-            case QuizType.Normal:
-                m_quizType.text = "【通常クイズ】";
-                break;
-            case QuizType.Anabuki:
-                m_quizType.text = "【穴吹クイズ】";
-                break;
-        }
-
-        m_difficulty.text = $"{m_gameSetting.GetDifficulty()}";
-        m_quizNumber.text = $"全{m_gameSetting.GetQuizNumber()}問";
-        m_playerNumber.text = $"{m_gameSetting.GetPlayerNumber()}人";
-        m_life.text = $"{m_gameSetting.GetLife()}";
-        m_timer.text = $"{m_gameSetting.GetTimer()}秒";
-    }
-
-    /// <summary>
-    /// ゲームの設定を設定
-    /// </summary>
-    /// <param name="gameSetting"></param>
-    public void SetGameSetting(GameSetting gameSetting)
-    {
-        m_gameSetting = gameSetting;
+        m_difficulty.text = $"{GameManager.Instance.GetSettingDifficulty()}";
+        m_quizNumber.text = $"全{GameManager.Instance.GetSettingQuizNumber()}問";
+        m_playerNumber.text = $"{m_currentPlayerCount}人";
+        m_life.text = $"{GameManager.Instance.GetSettingLife()}";
+        m_timer.text = $"{GameManager.Instance.GetSettingTimer()}秒";
     }
 
     /// <summary>
@@ -163,5 +143,14 @@ public class StartUI : UIBase
 
         //非表示開始
         Hide();
+    }
+
+    /// <summary>
+    /// 現在のプレイヤーの人数を設定
+    /// </summary>
+    /// <param name="PlayerCount"></param>
+    public void SetPlayerCount(int PlayerCount)
+    {
+        m_currentPlayerCount = PlayerCount;
     }
 }

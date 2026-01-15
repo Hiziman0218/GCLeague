@@ -32,4 +32,30 @@ public static class ServerPlayerCollector
 
         return players;
     }
+
+    /// <summary>
+    /// 現在のホストプレイヤーの HostControll を取得する
+    /// </summary>
+    public static HostControll GetHostController()
+    {
+        if (!NetworkServer.active)
+        {
+            Debug.LogWarning("GetHostController was called, but server is not active.");
+            return null;
+        }
+
+        foreach (var conn in NetworkServer.connections.Values)
+        {
+            if (conn == null || conn.identity == null)
+                continue;
+
+            HostControll hc = conn.identity.GetComponent<HostControll>();
+            if (hc != null && hc.isHostPlayer)
+            {
+                return hc;
+            }
+        }
+
+        return null;
+    }
 }
