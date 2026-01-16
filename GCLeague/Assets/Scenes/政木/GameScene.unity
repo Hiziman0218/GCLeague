@@ -1626,7 +1626,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94087460ce67d7b4aa0ce4c471131225, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_NetWorkIP: 192.168.0.15
+  m_NetWorkIP: 192.168.5.81
   m_NetworkManager: {fileID: 0}
   m_KCP: {fileID: 0}
   m_LogInWindow: {fileID: 1768253782}
@@ -1657,7 +1657,7 @@ MonoBehaviour:
   onlineScene: "Assets/Scenes/\u653F\u6728/GameScene.unity"
   offlineSceneLoadDelay: 0
   transport: {fileID: 321483383}
-  networkAddress: 192.168.0.15
+  networkAddress: 192.168.5.81
   maxConnections: 100
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
