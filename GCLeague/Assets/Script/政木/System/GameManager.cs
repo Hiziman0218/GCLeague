@@ -387,7 +387,7 @@ public class GameManager : NetworkBehaviour
         //ゲーム用のアクティブ設定
         RpcSetGameObjects(true);
         //全てのプレイヤーを初期位置に移動
-        TeleportAllPlayers(new Vector3(0f, 0.5f, 0f));
+        TeleportAllPlayersToGame();
 
         //出題するクイズの難易度を設定
         m_currentDifficulty = m_settingDifficulty;
@@ -409,7 +409,7 @@ public class GameManager : NetworkBehaviour
         RpcSetGameObjects(false);
 
         //全てのプレイヤーを初期位置に移動
-        TeleportAllPlayers(new Vector3(0f, 0.6f, 1.2f));
+        TeleportAllPlayersToLobby();
 
         RpcShowStartButton();
 
@@ -455,16 +455,31 @@ public class GameManager : NetworkBehaviour
     /*一括移動処理*/
 
     [Server]
-    public void TeleportAllPlayers(Vector3 pos)
+    public void TeleportAllPlayersToLobby()
     {
         foreach (var playerObj in ServerPlayerCollector.GetAllPlayers())
         {
             var move = playerObj.GetComponent<MirrorPlayerMoves>();
             if (move != null)
             {
-                move.ServerTeleport(pos);
+                move.ServerTeleportToLobby();
             }
         }
+        Debug.Log("Move Lobby");
+    }
+
+    [Server]
+    public void TeleportAllPlayersToGame()
+    {
+        foreach (var playerObj in ServerPlayerCollector.GetAllPlayers())
+        {
+            var move = playerObj.GetComponent<MirrorPlayerMoves>();
+            if (move != null)
+            {
+                move.ServerTeleportToGame();
+            }
+        }
+        Debug.Log("Move Game");
     }
 
     /*判定処理*/

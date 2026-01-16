@@ -22,7 +22,7 @@ using System.Collections;
 
 ///NetworkTransformReliableを追加(座標・向き情報をサーバーからクライアントへ流す)
 ///こっちの設定を[ServerToClient]にする事
-[RequireComponent(typeof(NetworkTransformReliable))]
+//[RequireComponent(typeof(NetworkTransformReliable))]
 
 ///NetworkAnimatorを追加(アニメーション情報をサーバーからクライアントへ流す)
 ///こっちの設定を[ServerToClient]にする事
@@ -65,23 +65,23 @@ public class MirrorPlayerMoves : NetworkBehaviour
     [Header("外部制御")]
     [SyncVar] public bool AllowMove = true;
 
-
+    public Transform m_lobbyPos; //ロビーの初期位置
+    public Transform m_gamePos;  //ゲームの初期位置
 
     void Start()
     {
-        //アニメーター獲得
-        //m_Animator = GetComponent<Animator>();
         //物理を取得
         m_Rigidbody = GetComponent<Rigidbody>();
         //NetworkTransformReliableに自身のtransformをリンクさせる
         GetComponent<NetworkTransformReliable>().target = this.transform;
-        //NetworkAnimatorに自身のAnimatorをリンクさせる
-        //GetComponent<NetworkAnimator>().animator = m_Animator;
 
         if (!isLocalPlayer)
         {
             m_Rigidbody.useGravity = false;
         }
+
+        m_lobbyPos = GameObject.Find("LobbyPos").transform;
+        m_gamePos = GameObject.Find("GamePos").transform;
     }
 
     void Update()
@@ -93,6 +93,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
             PlayerMove();
         }
     }
+
     private void LateUpdate()
     {
         if (!AllowMove) return;
@@ -117,7 +118,6 @@ public class MirrorPlayerMoves : NetworkBehaviour
             //移動アニメーション処理
             MoveAnimator(m_NewDirection);
         }
-
     }
     /// <summary>
     /// クライアント側/プレイヤー側である場合、移動入力を許可し、サーバーへ移動量を渡す
@@ -142,15 +142,8 @@ public class MirrorPlayerMoves : NetworkBehaviour
 
         //サーバーへ、移動位置と向き情報を転送
         ServerMove(this.transform.position, m_NewRotation, m_InputVector);
-
-        //サーバーへ移動量を転送
-        /*
-        ShadowMove(m_InputVector, m_CameraLink.transform.GetChild(0).forward, m_CameraLink.transform.GetChild(0).right);
-        */
-        //自身へ転送
-
     }
-
+    
     /// <summary>
     /// サーバー側が受け取る処理[移動処理]
     /// </summary>
@@ -162,7 +155,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
             Quaternion N_Rotation,  //プレイヤーの向き
             Vector3 N_InputVector)  //キー入力
     {
-        //if (!AllowMove) return;
+        if (!AllowMove) return;
 
         //isLocalPlayer=プレイヤーの本体
         //!isLocalPlayer=プレイヤーではない
@@ -174,55 +167,7 @@ public class MirrorPlayerMoves : NetworkBehaviour
         m_NewRotation = N_Rotation;
 
         m_NewDirection = N_InputVector;
-
-        // 他のクライアントに通知
-        //ShadowMove(N_Position, N_Rotation,N_InputVector);
-        //}
-
-        //プレイヤーの向きを再設定する
-        //PlayerRotation(direction, CameraForward, CameraRight);
-        /*
-        //移動量の数値が1を超えている場合、その数値を正規化する
-        if (direction.magnitude > 1)
-            direction.Normalize();
-
-        //移動力×移動スピードで正規の移動量とする
-        Vector3 force = direction * m_MoveSpeed;
-
-        // 現在の速度をチェック
-        if (m_Rigidbody.velocity.magnitude < m_MaxSpeed)
-            m_Rigidbody.AddForce(force, ForceMode.Force);
-
-        // 速度が最大速度を超えないようにする
-        if (m_Rigidbody.velocity.magnitude > m_MaxSpeed)
-            m_Rigidbody.velocity = m_Rigidbody.velocity.normalized * m_MaxSpeed;
-
-        // 移動していない場合、減衰処理を行う
-        if (!m_IsMoving)
-            m_Rigidbody.velocity =
-                Vector3.Lerp(m_Rigidbody.velocity, Vector3.zero, Time.fixedDeltaTime / m_DecelerationTime);
-        //移動アニメーション処理
-        MoveAnimator(direction);
-        */
     }
-
-    /*
-    // クライアントにブロードキャストするRPC (Remote Procedure Call)
-    [ClientRpc]
-    void ShadowMove(Vector3 N_Position, Quaternion N_Rotation, Vector3 N_InputVector)
-    {
-        // 自分自身のクライアントでは実行しない
-        if (!isLocalPlayer)
-        {
-            m_NewPosition = N_Position;
-            m_NewRotation = N_Rotation;
-            m_NewDirection = N_InputVector;
-        }
-    }
-    */
-
-
-
 
     /// <summary>
     /// キャラクターの向きをカメラ向きと、入力から割り出す
@@ -263,13 +208,21 @@ public class MirrorPlayerMoves : NetworkBehaviour
                     Time.deltaTime * 10f
                 );
 
-                Vector3 move = DesiredDirection.normalized * m_MoveSpeed * Time.deltaTime;
-                transform.position += move;
+                Vector3 move = DesiredDirection.normalized * m_MoveSpeed;
+                m_Rigidbody.velocity = move;
 
                 N_Position = transform.position;
                 N_Rotation = transform.rotation;
             }
         }
+        else
+        {
+            m_Rigidbody.velocity = Vector3.zero;
+
+            N_Position = transform.position;
+            N_Rotation = transform.rotation;
+        }
+
         //移動アニメーション処理
         MoveAnimator(direction);
     }
@@ -294,12 +247,10 @@ public class MirrorPlayerMoves : NetworkBehaviour
             m_AnimeMoveSpeed -= 2 * Time.deltaTime;
             if (m_AnimeMoveSpeed <= 0) m_AnimeMoveSpeed = 0;
         }
-        //サーバー側のアニメーションを変更
-        //m_Animator.SetFloat("Speed", m_AnimeMoveSpeed);
     }
 
     [Server]
-    public void ServerTeleport(Vector3 position)
+    public void ServerTeleportToLobby()
     {
         // 入力・補間を止める
         AllowMove = false;
@@ -307,20 +258,47 @@ public class MirrorPlayerMoves : NetworkBehaviour
         // Rigidbodyを安全にワープ
         m_Rigidbody.velocity = Vector3.zero;
         m_Rigidbody.angularVelocity = Vector3.zero;
-        m_Rigidbody.position = position;
+        m_Rigidbody.position = m_lobbyPos.position;
 
         // NetworkTransform用の同期変数も更新
-        m_NewPosition = position;
+        m_NewPosition = m_lobbyPos.position;
         m_NewRotation = transform.rotation;
+
+        Debug.Log("Move Lobby");
 
         // 1フレーム後に移動再開
         StartCoroutine(EnableMoveNextFrame());
     }
 
     [Server]
+    public void ServerTeleportToGame()
+    {
+        AllowMove = false;
+
+        //物理を完全停止
+        m_Rigidbody.velocity = Vector3.zero;
+        m_Rigidbody.angularVelocity = Vector3.zero;
+        m_Rigidbody.isKinematic = true;
+
+        transform.SetPositionAndRotation(
+            m_gamePos.position,
+            m_gamePos.rotation
+        );
+
+        m_NewPosition = m_gamePos.position;
+        m_NewRotation = m_gamePos.rotation;
+        m_NewDirection = Vector3.zero;
+
+        StartCoroutine(EnableMoveNextFrame());
+    }
+
+    [Server]
     private IEnumerator EnableMoveNextFrame()
     {
-        yield return null; // 1フレーム待つ
+        yield return null;
+        yield return new WaitForFixedUpdate();
+
+        m_Rigidbody.isKinematic = false;
         AllowMove = true;
     }
 }
